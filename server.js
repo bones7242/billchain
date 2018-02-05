@@ -40,6 +40,7 @@ app.get('/mine', (req, res) => {
 })
 
 app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
+    console.log('/transactions/new/,', body);
     // check that the required fields are in the psot'ed data
     if (!body.sender || !body.recipient || !body.amount) {
         return res.status(400).send('missing values');

@@ -72,7 +72,7 @@ class Blockchain {
             recipient,
             amount,
         })
-        return this.lastBlock.index + 1;
+        return this.lastBlock().index + 1;
     };
     hash (block) {
         // hashes a Block
