@@ -1,0 +1,23 @@
+{
+  "name": "billchain",
+  "version": "1.0.0",
+  "description": "a javascript implementation of a blockchain",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/billbitt/billchain.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/billbitt/billchain/issues"
+  },
+  "homepage": "https://github.com/billbitt/billchain#readme",
+  "dependencies": {
+    "body-parser": "^1.18.2",
+    "express": "^4.16.2"
+  }
+}
