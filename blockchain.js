@@ -1,14 +1,44 @@
 let crypto;
 try {
     crypto = require('crypto');
+    console.log('[x] crypto is supported');
 } catch (err) {
-    console.log('crypto support is disabled!');
+    console.log('[!] crypto support is disabled');
 }
 
-module.exports = function Blockchain () {
-    this.chain = [];
-    this.currentTransactions = [];
-    this.newBlock = function (proof, previousHash = null) {
+class Blockchain {
+    constructor() {
+        this.chain = [];
+        this.currentTransactions = [];
+        this.hashSeed = 'billbitt';
+        // bind 'this' to class methods
+        this.newBlock = this.newBlock.bind(this);
+        this.newTransaction = this.newTransaction.bind(this);
+        this.hash = this.hash.bind(this);
+        this.lastBlock = this.lastBlock.bind(this);
+        this.proofOfWork = this.proofOfWork.bind(this);
+        this.validProof = this.validProof.bind(this);
+        // generate first 'genesis' block
+        this.newBlock(1, 100);
+        this.printChain();
+        this.printLastBlock();
+        this.printBlock(0);
+        this.printBlock(1);
+        this.printBlock(2);
+    }
+    printChain () {
+        console.log('chain:', this.chain);
+    }
+    printLastBlock () {
+        console.log('last block:', this.lastBlock());
+    }
+    printBlock (blockNumber) {
+        if (blockNumber < 1 || blockNumber > this.chain.length) {
+            return console.log(`error: block #${blockNumber} does not exist in the chain`);
+        }
+        console.log(`block #${blockNumber}:`, this.chain[blockNumber - 1]);
+    }
+    newBlock (proof, previousHash = null) {
         /*
         Creates a new Block and adds it to the chain
 
@@ -17,7 +47,7 @@ module.exports = function Blockchain () {
         :return: <dict> New Block
         */
         const block = {
-            index: this.chain.length() + 1,
+            index: this.chain.length + 1,
             timestamp: Date.now(),
             transactions: this.currentTransactions,
             proof: proof,
@@ -28,7 +58,7 @@ module.exports = function Blockchain () {
         this.chain.push(block);
         return block;
     };
-    this.newTransaction = function (sender, recipient, amount) {
+    newTransaction (sender, recipient, amount) {
         /*
         Adds a new transaction to the list of transactions
 
@@ -37,15 +67,14 @@ module.exports = function Blockchain () {
         :param amount <int> Amount
         :return: <int> The index of the Block that will hold this transaction
         */
-        this.currentTransactions.append({
+        this.currentTransactions.push({
             sender,
             recipient,
             amount,
         })
-        return this.lastBlock['index'] + 1;
+        return this.lastBlock.index + 1;
     };
-    this.secretWord = 'abcdefg';
-    this.hash = function (block) {
+    hash (block) {
         // hashes a Block
 
         // make sure block is in order so it hashes the same time each time
@@ -53,16 +82,17 @@ module.exports = function Blockchain () {
         // stringify the block
         const blockString = JSON.stringify(sortedBlock);
         // hash
-        const hash = crypto.createHmac('sha256', this.secretWord)
+        const hash = crypto.createHmac('sha256', this.hashSeed)
             .update(blockString)
             .digest('hex');
         return hash;
     };
-    this.lastBlock = function () {
+    lastBlock () {
         // returns the last Block in the chain
-        return this.chain[-1];
+        const lastBlock = this.chain.length - 1;
+        return this.chain[lastBlock];
     }
-    this.proofOfWork = function (lastProof) {
+    proofOfWork (lastProof) {
         /*
         Simple Proof of Work Algorithm:
          - Find a number p' such that hash(pp') contains leading 4 zeroes, where p is the previous p'
@@ -71,13 +101,14 @@ module.exports = function Blockchain () {
         :param lastProof: <int>
         :return: <int>
          */
-        proof = 0;
+        let proof = 0;
         while (this.validProof(lastProof, proof) === false) {
             proof += 1;
+            // console.log('trying proof:', proof);
         }
         return proof;
     }
-    this.validProof = function (lastProof, proof) {
+    validProof (lastProof, proof) {
         /*
         Validates the Proof: Does hash(lastProof, proof) contain 4 leading zeroes?
 
@@ -86,9 +117,17 @@ module.exports = function Blockchain () {
         :return: <bool> True if correct, False if not.
          */
         const guess = `${lastProof}${proof}`;
-        const guessHash = crypto.createHmac('sha256', this.secretWord)
+        const guessHash = crypto.createHmac('sha256', this.hashSeed)
             .update(guess)
             .digest('hex');
-        return (guessHash.substring(0, 3) === '0000');
+        const guessHashLeadingCharacters = guessHash.substring(0, 3);
+
+        console.log('guess:', guess);
+        console.log('guessHash:', guessHash);
+        console.log('guessHashLeadingCharacters:', guessHashLeadingCharacters);
+
+        return ( guessHashLeadingCharacters === '000');
     }
 }
+
+module.exports = Blockchain;
