@@ -16,7 +16,6 @@ nodeIdentifier = randomId('xNAx', 40);
 const blockchain = new Blockchain();
 
 // add routes
-
 app.get('/mine', (req, res) => {
     // We run the proof of work algorithm to get the next proof...
     const lastBlock = blockchain.lastBlock();
@@ -40,7 +39,7 @@ app.get('/mine', (req, res) => {
     }
 
     res.status(200).json(response);
-})
+});
 
 app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
     console.log('/transactions/new/,', body);
@@ -53,7 +52,7 @@ app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
     // create response
     const response = {message: `Transaction will be added to Block ${index}`};
     return res.status(201).json(response);
-})
+});
 
 app.get('/chain', (req, res) => {
     const response = {
@@ -61,7 +60,7 @@ app.get('/chain', (req, res) => {
         length: blockchain.chain.length,
     }
     return res.json(response);
-})
+});
 
 app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
     // accept a list of new nodes in the form of URLs
@@ -77,27 +76,32 @@ app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
         totalNodes: nodeList,
     }
     return res.status(201).json(response);
-})
+});
 
 
 app.get('/nodes/resolve', (req, res) => {
     // implement Consensus Algorithm, which resolves any confligs, to ensure a node has the correct chain
-    const replaced = blockchain.resolveConflicts();
-    if (replaced) {
-        response = {
-            message: 'Our chain was replaced',
-            newChain: blockchain.chain,
-        }
-    } else {
-        response = {
-            message: 'Our chain is authoritative',
-            chain: blockchain.chain,
-        }
-    }
-    return res.status(201).json(response);
-})
+    blockchain.resolveConflicts()
+        .then(replaced => {
+            if (replaced) {
+                response = {
+                    message: 'Our chain was replaced',
+                    newChain: blockchain.chain,
+                }
+            } else {
+                response = {
+                    message: 'Our chain is authoritative',
+                    chain: blockchain.chain,
+                }
+            }
+            return res.status(201).json(response);
+        })
+        .catch(error => {
+            res.status(400).json(error.message);
+        });
+});
 
 
 app.listen(PORT, () => {
     console.log(`Blockchain node listening on port ${PORT}!`)
-})
+});
