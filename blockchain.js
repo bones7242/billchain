@@ -1,3 +1,6 @@
+// import dependencies
+const axios = require('axios');
+// check for crypto support
 let crypto;
 try {
     crypto = require('crypto');
@@ -5,12 +8,13 @@ try {
 } catch (err) {
     console.log('[!] crypto support is disabled');
 }
-
+// declare Blockchain class
 class Blockchain {
     constructor() {
         this.chain = [];
         this.currentTransactions = [];
         this.hashSeed = 'billbitt';
+        this.nodes = {};
         // bind 'this' to class methods
         this.newBlock = this.newBlock.bind(this);
         this.newTransaction = this.newTransaction.bind(this);
@@ -18,8 +22,13 @@ class Blockchain {
         this.lastBlock = this.lastBlock.bind(this);
         this.proofOfWork = this.proofOfWork.bind(this);
         this.validProof = this.validProof.bind(this);
+        this.registerNode = this.registerNode.bind(this);
+        this.validChain = this.validChain.bind(this);
+        this.returnNodeAddresses = this.returnNodeAddresses.bind(this);
+        this.resolveConflicts = this.resolveConflicts.bind(this);
         // generate first 'genesis' block
         this.newBlock(1, 100);
+        // print some stats to make sure first block was created correctly
         this.printChain();
         this.printLastBlock();
         this.printBlock(0);
@@ -121,12 +130,112 @@ class Blockchain {
             .update(guess)
             .digest('hex');
         const guessHashLeadingCharacters = guessHash.substring(0, 3);
-
         console.log('guess:', guess);
         console.log('guessHash:', guessHash);
         console.log('guessHashLeadingCharacters:', guessHashLeadingCharacters);
-
         return ( guessHashLeadingCharacters === '000');
+    }
+    registerNode (address) {
+        /*
+        Add a new node to the list of nodes
+
+        :param address: <str> Address of node. Eg. 'http://192.168.0.5:5000'
+        :return: None
+         */
+        this.nodes[address] = address;
+    }
+    validChain (chain) {
+        /*
+        Determine if a given blockchain is valid
+
+        :param chain: <list> A blockchain
+        :return: <bool> True if valid, False if not
+         */
+        let lastBlock = chain[0];
+        let currentIndex = 1;
+        // check the chain, and return false if any problems
+        while (currentIndex < chain.length) {
+            const block = chain[currentIndex];
+            console.log('last block:', lastBlock);
+            console.log('block:', block);
+            console.log('\n-----------\n');
+            // check that the hash of the block is correct
+            if (block.previousHash !== this.hash(lastBlock)) {
+                return false;
+            }
+            // check that the Proof of Work is correct
+            if (!this.validProof(lastBlock.proof, block.proof)) {
+                return false;
+            }
+
+            lastBlock = block;
+            currentIndex += 1;
+        }
+        // return true if no problems found in the chain
+        return true;
+    }
+    returnNodeAddresses () {
+        let nodes = this.nodes;
+        let addresses = [];
+        for (let key in nodes){
+            if (nodes.hasOwnProperty(key)) {
+                addresses.push(nodes[key]);
+            }
+        };
+        return addresses;
+    }
+    resolveConflicts () {
+        /*
+        This is our Consensus Algorithm, it resolves conflicts
+        by replacing our chain with the longest one in the network.
+
+        :return: <bool> True if our chain was replaced, False if not
+         */
+        const neighborNodes = this.returnNodeAddresses();
+        let newChain = null;
+        // we're only looking for chains longer than ours
+        let maxLength = this.chain.length;
+        // grab and verify the chains from all the nodes in our network
+        const that = this;
+        async function processNodes(neighborNodes) {
+            console.log('starting sync with neighborNodes', neighborNodes)
+            // map array to promises
+            const promises = neighborNodes.map((node) => {
+                return new Promise ((resolve, reject) => {
+                    axios.get(`${node}/chain`)
+                        .then((response) => {
+                            // console.log('response:', response);
+                            if (response.status === 200) {
+                                // check if the length is longer and the chain is valid
+                                const length = response.data.length;
+                                const chain = response.data.chain;
+                                if (length > maxLength && that.validChain(chain)) {
+                                    maxLength = length;
+                                    newChain = chain;
+                                }
+                                resolve();
+                            } else {
+                                console.log(`response returned with status ${response.status}`);
+                                reject();
+                            }
+                        })
+                        .catch(error => {
+                            console.log('axios error:', error);
+                            reject();
+                        });
+                })
+            })
+            // wait until all promises are resolved
+            await Promise.all(promises);
+            console.log('done!');
+        }
+        processNodes(neighborNodes);
+        // replace our chain if we discover a new, valid chain that is longer than ours
+        if (newChain) {
+            this.chain = newChain;
+            return true;
+        }
+        return false;
     }
 }
 

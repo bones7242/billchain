@@ -3,6 +3,9 @@ const Blockchain = require('./blockchain.js');
 const randomId = require('./randomId.js');
 const jsonBodyParser = require('body-parser').json();
 
+// get the port
+const PORT = parseInt(process.argv[2]) || 3000;
+
 //instantiate the node
 const app = express()
 
@@ -60,6 +63,41 @@ app.get('/chain', (req, res) => {
     return res.json(response);
 })
 
-app.listen(3000, () => {
-    console.log('Blockchain node listening on port 3000!')
+app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
+    // accept a list of new nodes in the form of URLs
+    const nodeList = body.nodes;
+    if (!nodeList || (nodeList.length === 0)) {
+        return res.status(400).json({error: 'Please supply a valid array of nodes'})
+    }
+    for (let i = 0; i < nodeList.length; i++) {
+        blockchain.registerNode(nodeList[i]);
+    }
+    const response = {
+        message: 'New nodes have been added',
+        totalNodes: nodeList,
+    }
+    return res.status(201).json(response);
+})
+
+
+app.get('/nodes/resolve', (req, res) => {
+    // implement Consensus Algorithm, which resolves any confligs, to ensure a node has the correct chain
+    const replaced = blockchain.resolveConflicts();
+    if (replaced) {
+        response = {
+            message: 'Our chain was replaced',
+            newChain: blockchain.chain,
+        }
+    } else {
+        response = {
+            message: 'Our chain is authoritative',
+            chain: blockchain.chain,
+        }
+    }
+    return res.status(201).json(response);
+})
+
+
+app.listen(PORT, () => {
+    console.log(`Blockchain node listening on port ${PORT}!`)
 })
