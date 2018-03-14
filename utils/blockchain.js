@@ -15,17 +15,6 @@ class Blockchain {
         this.currentTransactions = [];
         this.hashSeed = 'billbitt';
         this.nodes = {};
-        // bind 'this' to class methods
-        this.newBlock = this.newBlock.bind(this);
-        this.newTransaction = this.newTransaction.bind(this);
-        this.hash = this.hash.bind(this);
-        this.lastBlock = this.lastBlock.bind(this);
-        this.proofOfWork = this.proofOfWork.bind(this);
-        this.validProof = this.validProof.bind(this);
-        this.registerNode = this.registerNode.bind(this);
-        this.validChain = this.validChain.bind(this);
-        this.returnNodeAddresses = this.returnNodeAddresses.bind(this);
-        this.resolveConflicts = this.resolveConflicts.bind(this);
         // generate first 'genesis' block
         this.newBlock(1, 100);
         // print some stats to make sure first block was created correctly
@@ -52,7 +41,7 @@ class Blockchain {
         Creates a new Block and adds it to the chain
 
         :param proof: <int> the proof given by the Proof of Work algorithm
-        :param prevousHash: (optional) <str> Hash of previous Block
+        :param previousHash: (optional) <str> Hash of previous Block
         :return: <dict> New Block
         */
         const block = {

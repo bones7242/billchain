@@ -1,13 +1,13 @@
-const express = require('express')
-const Blockchain = require('./blockchain.js');
-const randomId = require('./randomId.js');
+const express = require('express');
+const Blockchain = require('./utils/blockchain.js');
+const randomId = require('./utils/randomId.js');
 const jsonBodyParser = require('body-parser').json();
 
 // get the port
 const PORT = parseInt(process.argv[2]) || 3000;
 
 //instantiate the node
-const app = express()
+const app = express();
 
 // Generate a globally unique address for this node
 nodeIdentifier = randomId('xNAx', 40);
@@ -43,7 +43,7 @@ app.get('/mine', (req, res) => {
 
 app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
     console.log('/transactions/new/,', body);
-    // check that the required fields are in the psot'ed data
+    // check that the required fields are in the post'ed data
     if (!body.sender || !body.recipient || !body.amount) {
         return res.status(400).send('missing values');
     }
