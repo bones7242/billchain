@@ -19,10 +19,10 @@ class Blockchain {
         this.newBlock(1, 100);
         // print some stats to make sure first block was created correctly
         this.printChain();
-        this.printLastBlock();
-        this.printBlock(0);
-        this.printBlock(1);
-        this.printBlock(2);
+        // this.printLastBlock();
+        // this.printBlock(0);
+        // this.printBlock(1);
+        // this.printBlock(2);
     }
     printChain () {
         console.log('chain:', this.chain);
@@ -50,6 +50,7 @@ class Blockchain {
             transactions: this.currentTransactions,
             proof: proof,
             previousHash: previousHash || this.hash(this.chain[-1]),
+
         }
         // reset the current list of transactions
         this.currentTransactions = [];
@@ -65,11 +66,12 @@ class Blockchain {
         :param amount <int> Amount
         :return: <int> The index of the Block that will hold this transaction
         */
-        this.currentTransactions.push({
+        const transaction = {
             sender,
             recipient,
             amount,
-        })
+        };
+        this.currentTransactions.push(transaction);
         return this.lastBlock().index + 1;
     };
     hash (block) {
@@ -80,10 +82,9 @@ class Blockchain {
         // stringify the block
         const blockString = JSON.stringify(sortedBlock);
         // hash
-        const hash = crypto.createHmac('sha256', this.hashSeed)
+        return crypto.createHmac('sha256', this.hashSeed)
             .update(blockString)
             .digest('hex');
-        return hash;
     };
     lastBlock () {
         // returns the last Block in the chain
@@ -118,11 +119,9 @@ class Blockchain {
         const guessHash = crypto.createHmac('sha256', this.hashSeed)
             .update(guess)
             .digest('hex');
-        const guessHashLeadingCharacters = guessHash.substring(0, 3);
-        // console.log('guess:', guess);
+        const guessHashLeadingCharacters = guessHash.substring(0, 4);
         console.log('guessHash:', guessHash);
-        // console.log('guessHashLeadingCharacters:', guessHashLeadingCharacters);
-        return ( guessHashLeadingCharacters === '000');
+        return ( guessHashLeadingCharacters === '0000');
     }
     registerNode (address) {
         /*
