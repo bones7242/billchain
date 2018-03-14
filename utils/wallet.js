@@ -1,17 +1,19 @@
-const crypto = require('crypto');
+var EC = require('elliptic').ec;
+var ec = new EC('secp256k1');
 
 class Wallet {
     constructor() {
         console.log('creating your new wallet!');
-        this.privateKey;
-        this.publicKey;
         this.generateKeyPair();
     }
     generateKeyPair() {
-        const keyGen = crypto.createECDH('secp521r1');
-        keyGen.generateKeys();
-        this.publicKey = keyGen.getPublicKey();
-        this.privateKey = keyGen.getPrivateKey();
+        // create private key
+        const key = ec.genKeyPair();
+        this.privateKey = key;
+
+        // create public key
+        const pubPoint = key.getPublic();
+        this.publicKey = pubPoint.encode('hex');
     }
 }
 

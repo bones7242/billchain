@@ -5,12 +5,15 @@ const Transaction = require('./utils/transaction.js');
 walletA = new Wallet();
 walletB = new Wallet();
 //Test public and private keys
-console.log("Private and public keys:");
-console.log(walletA.privateKey);
-console.log(walletA.publicKey);
+console.log('\n');
+console.log('Wallet A Private key:', walletA.privateKey);
+console.log('\n');
+console.log('Wallet A Public key:', walletA.publicKey);
 //Create a test transaction from WalletA to walletB
 const transaction = new Transaction(walletA.publicKey, walletB.publicKey, 5, null);
 transaction.generateSignature(walletA.privateKey);
+console.log('\n');
+console.log(transaction);
 //Verify the signature works and verify it from the public key
-console.log("Is signature verified");
-console.log(transaction.verifiySignature());
+console.log('\n');
+console.log("Is signature verified:", transaction.verifiySignature());

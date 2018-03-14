@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+var EC = require('elliptic').ec;
+var ec = new EC('secp256k1');
 
 class Transaction {
     constructor (sender, recipient, amount, inputs) {
@@ -10,33 +12,24 @@ class Transaction {
         this.inputs = inputs;
         this.sequence = 0;
         this.signature;
+        this.hash = this.calculateHash();
     }
     calculateHash () {
         this.sequence = this.sequence + 1;
         return crypto.createHmac('sha256', this.hashSeed)
-            .update(this.sender + this.recipient + this.amount + this.sequence)
+            .update(this.sender + this.recipient + this.amount + this.sequence + this.inputs)
             .digest('hex');
     }
     generateSignature (privateKey) {
-        // const data = this.getStringFromKey(this.sender) + this.getStringFromKey(this.recipient + this.amount);
-        // return this.applyECDSASig(privateKey, data)
-        const data = this.sender + this.recipient + this.amount;
-        const sign = crypto.createSign('SHA256');
-        sign.update(data);
-        // sign.write(data);
-        // sign.end();
-        this.signature = sign.sign(privateKey, 'hex');
+        const data = this.hash;
+        const signature = privateKey.sign(data);
+        this.signature = signature.toDER('hex');
 
     }
     verifiySignature() {
-        // const data = this.getStringFromKey(this.sender) + this.getStringFromKey(this.recipient + this.amount);
-        // return this.verifyECDSASig(this.sender, data, signature)
-        const data = this.sender + this.recipient + this.amount;
-        const verify = crypto.createVerify('SHA256');
-        sign.update(data);
-        // verify.write(data);
-        // verify.end();
-        return verify.verify(this.sender, this.signature)
+        const data = this.hash;
+        const key = ec.keyFromPublic(this.sender, 'hex');
+        return key.verify(data, this.signature);
 
     }
 }
