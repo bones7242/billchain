@@ -97,6 +97,7 @@ class Transaction {
                 // delete UTXO[key];
             }
         }
+        return true;
 
     }
 }
