@@ -15,6 +15,8 @@ class Blockchain {
         this.currentTransactions = [];
         this.hashSeed = 'billbitt';
         this.nodes = {};
+        this.UTXOs = {};
+        this.minimumTransaction = 0.01;
         // generate first 'genesis' block
         this.newBlock(1, 100);
         // print some stats to make sure first block was created correctly

@@ -10,6 +10,7 @@ class Transaction {
         this.recipient = recipient;
         this.amount = amount;
         this.inputs = inputs;
+        this.outputs = {};
         this.signature = null;
         this.hashSeed = 'billbitt';
         this.txid = this.calculateHash();
@@ -31,15 +32,70 @@ class Transaction {
         return key.verify(message, this.signature);
 
     }
-    processTransaction () {
+    // add up all the values of inputs that have a utxo attached to them
+    // if the input has a UTXO, add its value to the total
+    getInputsValue () {
+        let total = 0;
+        for (let key in this.inputs) {
+            if (this.inputs.hasOwnProperty(key)) {
+                if (this.inputs[key].UTXO){
+                    total += this.inputs[key].UTXO.amount;
+                }
+            }
+        }
+        return total;
+    };
+    getOutputsValue () {
+        let total = 0;
+        for (let key in this.outputs) {
+            if (this.outputs.hasOwnProperty(key)) {
+                total += this.outputs[key].amount;
+            }
+        }
+        return total;
+    }
+    processTransaction (UTXOs, minimumTransaction) {
+        /*
+        Returns true if a new transaction could be generated
+
+        :param UTXOs: <obj> map of all UTXOs
+        */
         if (this.verifySignature() === false) {
             console.log('#Transaction Signature failed to verify');
             return false;
         }
-        // gather transaction inputs
-        for (let i = 0; i < this.inputs.length; i++) {
-            inputs[i].transactionOutputId
+        // gather transaction inputs (make sure they are unspent
+        // attach the UTXO to the input (assuming one can be found in UTXO list)
+        for (let key in this.inputs) {
+            if (this.inputs.hasOwnProperty(key)) {
+                this.inputs[key]['UTXO'] = UTXOs[this.inputs[key].transactionOutputId];
+            }
         }
+        // check if transaction is valid
+        if (this.getInputsValue() > minimumTransaction) {
+            console.log('#Transaction Inputs to small:', this.getInputsValue());
+            return false;
+        }
+        // generate transaction outputs:
+        let leftOver = this.getInputsValue() - this.amount;
+        const outputForRecipient = new TransactionOutput(this.reciepient, this.amount, this.txid);
+        this.outputs[outputForRecipient.id] = outputForRecipient;
+        const outputForChange = new TransactionOutput(this.sender, leftOver, this.txid);
+        this.outputs[outputForChange.id] = outputForChange;
+        // add outputs to master UTXO list
+        for (let key in this.outputs) {
+            if (this.outputs.hasOwnProperty(key)) {
+                  // UTXO[key] = this.outputs[key];
+            }
+
+        }
+        // remove transaction inputs from master UTXO list as spent
+        for (let key in this.inputs) {
+            if (this.inputs.hasOwnProperty(key)) {
+                // delete UTXO[key];
+            }
+        }
+
     }
 }
 
