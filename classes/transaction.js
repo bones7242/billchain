@@ -12,7 +12,7 @@ class Transaction {
         this.recipient = recipient;
         this.amount = amount;
         this.inputs = inputs;
-        this.outputs = {};
+        this.outputs = [];
         this.signature = null;
         this.hashSeed = 'billbitt';
         this.txid = this.calculateHash();
@@ -49,10 +49,8 @@ class Transaction {
     };
     getOutputsValue () {
         let total = 0;
-        for (let key in this.outputs) {
-            if (this.outputs.hasOwnProperty(key)) {
-                total += this.outputs[key].amount;
-            }
+        for (let i = 0; i < this.outputs.length; i++) {
+            total += this.outputs[i].amount;
         }
         return total;
     }
@@ -81,16 +79,15 @@ class Transaction {
         // generate transaction outputs:
         let leftOver = this.getInputsValue() - this.amount;
         const outputForRecipient = new TransactionOutput(this.reciepient, this.amount, this.txid);
-        this.outputs[outputForRecipient.id] = outputForRecipient;
+        this.outputs[0] = outputForRecipient;
         const outputForChange = new TransactionOutput(this.sender, leftOver, this.txid);
-        this.outputs[outputForChange.id] = outputForChange;
-        // add outputs to master UTXO list
-        for (let key in this.outputs) {
-            if (this.outputs.hasOwnProperty(key)) {
-                  // UTXO[key] = this.outputs[key];
-            }
+        this.outputs[1] = outputForChange;
 
-        }
+        // add outputs to master UTXO list
+        this.outputs.forEach( thisOutput => {
+            // UTXO[thisOutput.id] = thisOutput;
+        })
+
         // remove transaction inputs from master UTXO list as spent
         for (let key in this.inputs) {
             if (this.inputs.hasOwnProperty(key)) {

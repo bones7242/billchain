@@ -9,37 +9,98 @@ try {
     console.log('[!] crypto support is disabled');
 }
 
+const Wallet = require('./wallet.js');
+const Block = require('./block.js');
+const TransactionOutput = require('./transactionOutput.js');
 const Transaction = require('./transaction.js');
+const getDifficultyString = require('../utils/getDifficultyString.js');
 
 // declare Blockchain class
 class Blockchain {
     constructor() {
         this.chain = [];
         this.currentTransactions = [];
+        this.difficulty = 3;
         this.hashSeed = 'billbitt';
         this.nodes = {};
         this.UTXOs = {};
+        this.genesisBlock = null;
         this.minimumTransaction = 0.01;
+        this.walletA = new Wallet();
+        this.walletB = new Wallet();
+        this.coinbase = new Wallet();
+
         // generate first 'genesis' block
-        this.newBlock(1, 100);
+        this.createGenesisBlock();
+        this.newChainTest();
+        // this.newBlock(1, 100);
         // print some stats to make sure first block was created correctly
         this.printChain();
-        // this.printLastBlock();
-        // this.printBlock(0);
-        // this.printBlock(1);
-        // this.printBlock(2);
+    }
+    newChainTest () {
+        //testing
+        const block1 = new Block(this.lastBlock().hash);
+        console.log("\nWalletA's balance is: " + this.walletA.getBalance());
+        console.log("\nWalletA is Attempting to send funds (40) to WalletB...");
+        block1.addTransaction(this.walletA.generateTransaction(this.walletB.publicKey, 40));
+        this.addBlock(block1);
+        console.log("\nWalletA's balance is: " + this.walletA.getBalance());
+        console.log("WalletB's balance is: " + this.walletB.getBalance());
+
+        const block2 = new Block(this.lastBlock().hash);
+        console.log("\nWalletA Attempting to send more funds (1000) than it has...");
+        block2.addTransaction(this.walletA.generateTransaction(this.walletB.publicKey, 1000));
+        this.addBlock(block2);
+        console.log("\nWalletA's balance is: " + this.walletA.getBalance());
+        console.log("WalletB's balance is: " + this.walletB.getBalance());
+
+        const block3 = new Block(this.lastBlock().hash);
+        console.log("\nWalletB is Attempting to send funds (20) to WalletA...");
+        block3.addTransaction(this.walletB.generateTransaction(this.walletA.publicKey, 20));
+        console.log("\nWalletA's balance is: " + this.walletA.getBalance());
+        console.log("WalletB's balance is: " + this.walletB.getBalance());
+
+        console.log('is this chain valid:', this.validChain(this.chain));
     }
     printChain () {
         console.log('chain:', this.chain);
     }
-    printLastBlock () {
-        console.log('last block:', this.lastBlock());
-    }
-    printBlock (blockNumber) {
-        if (blockNumber < 1 || blockNumber > this.chain.length) {
-            return console.log(`error: block #${blockNumber} does not exist in the chain`);
-        }
-        console.log(`block #${blockNumber}:`, this.chain[blockNumber - 1]);
+    // printLastBlock () {
+    //     console.log('last block:', this.lastBlock());
+    // }
+    // printBlock (blockNumber) {
+    //     if (blockNumber < 1 || blockNumber > this.chain.length) {
+    //         return console.log(`error: block #${blockNumber} does not exist in the chain`);
+    //     }
+    //     console.log(`block #${blockNumber}:`, this.chain[blockNumber - 1]);
+    // }
+    createGenesisBlock () {
+        // create genesis transaction
+        let genesisTransaction = new Transaction(this.coinbase.publicKey, this.walletA.publicKey, 100, null);
+        //manually sign the genesis transaction
+        genesisTransaction.generateSignature(this.coinbase.privateKey);
+        // manually set the txid
+        genesisTransaction.txid = '0';
+        // add a UTXO to the genesis transaction
+        const genesisTransactionOutput = new TransactionOutput(
+            genesisTransaction.recipient,
+            genesisTransaction.amount,
+            genesisTransaction.txid
+        );
+        genesisTransaction.outputs[0]= genesisTransactionOutput;
+
+        // store the UTXO in the UTXOs list
+        this.UTXOs[genesisTransactionOutput.id]= genesisTransactionOutput;
+
+        // create genesis block
+        console.log('Creating and mining genesis block...');
+        const genesis = new Block('0');
+        genesis.addTransaction(genesisTransaction);
+        this.genesisTransactionOutput = genesisTransactionOutput; // store the genesis UTXO
+        this.genesisTransaction = genesisTransaction;  // store the genesis transaction
+        this.genesisBlock = genesis;  // store the genesis block
+        this.addBlock(genesis);
+
     }
     newBlock (proof, previousHash = null) {
         /*
@@ -49,15 +110,17 @@ class Blockchain {
         :param previousHash: (optional) <str> Hash of previous Block
         :return: <dict> New Block
         */
-        const currentChainLength = this.chain.length;
-        const transactions = this.currentTransactions;
-        previousHash = previousHash || this.hash(this.chain[-1]);
-        const block = new Block(currentChainLength, transactions, proof, previousHash);
+
         // reset the current list of transactions
         this.currentTransactions = [];
         this.chain.push(block);
         return block;
-    };
+    }
+    addBlock (newBlock) {
+        newBlock.mineBlock(this.difficulty);
+        this.chain.push(newBlock);
+        return newBlock;
+    }
     newTransaction (sender, recipient, amount) {
         /*
         Adds a new transaction to the list of transactions
@@ -75,54 +138,10 @@ class Blockchain {
         this.currentTransactions.push(transaction);
         return this.lastBlock().index + 1;
     };
-    hash (block) {
-        // hashes a Block
-
-        // make sure block is in order so it hashes the same time each time
-        const sortedBlock = Object.keys(block).sort().reduce((r, k) => (r[k] = block[k], r), {});
-        // stringify the block
-        const blockString = JSON.stringify(sortedBlock);
-        // hash
-        return crypto.createHmac('sha256', this.hashSeed)
-            .update(blockString)
-            .digest('hex');
-    };
     lastBlock () {
         // returns the last Block in the chain
         const lastBlock = this.chain.length - 1;
         return this.chain[lastBlock];
-    }
-    proofOfWork (lastProof) {
-        /*
-        Simple Proof of Work Algorithm:
-         - Find a number p' such that hash(pp') contains leading 4 zeroes, where p is the previous p'
-         - p is the previous proof, and p' is the new proof
-
-        :param lastProof: <int>
-        :return: <int>
-         */
-        let proof = 0;
-        while (this.validProof(lastProof, proof) === false) {
-            proof += 1;
-            // console.log('trying proof:', proof);
-        }
-        return proof;
-    }
-    validProof (lastProof, proof) {
-        /*
-        Validates the Proof: Does hash(lastProof, proof) contain 4 leading zeroes?
-
-        :param lastProof: <int> Previous Proof
-        :param proof: <int> Current Proof
-        :return: <bool> True if correct, False if not.
-         */
-        const guess = `${lastProof}${proof}`;
-        const guessHash = crypto.createHmac('sha256', this.hashSeed)
-            .update(guess)
-            .digest('hex');
-        const guessHashLeadingCharacters = guessHash.substring(0, 4);
-        console.log('guessHash:', guessHash);
-        return ( guessHashLeadingCharacters === '0000');
     }
     registerNode (address) {
         /*
@@ -140,27 +159,84 @@ class Blockchain {
         :param chain: <list> A blockchain
         :return: <bool> True if valid, False if not
          */
-        let lastBlock = chain[0];
+        const target = getDifficultyString(this.difficulty);
+        let previousBlock = chain[0];
         let currentIndex = 1;
+        let tempUTXOs = {};
+
+        tempUTXOs[this.genesisTransactionOutput.id] = this.genesisTransactionOutput;
+
         // check the chain, and return false if any problems
         while (currentIndex < chain.length) {
-            const block = chain[currentIndex];
-            // console.log('last block:', lastBlock);
-            // console.log('block:', block);
-            // console.log('\n-----------\n');
-            // check that the hash of the block is correct
-            if (block.previousHash !== this.hash(lastBlock)) {
+            const currentBlock = chain[currentIndex];
+            // compare registered hash and calculated hash
+            if (currentBlock.hash !== currentBlock.calculateHash()) {
+                console.log('#Current hashes are not equal');
                 return false;
             }
-            // check that the Proof of Work is correct
-            if (!this.validProof(lastBlock.proof, block.proof)) {
+            // compare previous hash and registered revious hash
+            if (previousBlock.hash !== currentBlock.previousHash) {
+                console.log('#previous Hashes not equal');
                 return false;
             }
-
-            lastBlock = block;
+            // check if hash is solved
+            if (currentBlock.hash.substring(0, this.difficulty) !== target) {
+                console.log('#This block has not been mined');
+                return false;
+            }
+            // check the block's transactions
+            let tempOutput;
+            for (let i = 0; i < currentBlock.transactions.length; i++) {
+                const currentTransaction = currentBlock.transactions[i];
+                // verify the tx signature
+                if(!currentTransaction.verifiySignature()) {
+                    console.log(`#Signature on transaction[${i}] is invalid`);
+                    return false;
+                }
+                // verify the inputs equal the outputs
+                if(currentTransaction.getInputsValue() !== currentTransaction.getOutputsValue()) {
+                    console.log(`#Inputs are not equal to outputs on transaction[${i}]`);
+                    return false;
+                }
+                // check all the inputs
+                for (let key in currentTransaction.inputs) {
+                    if (currentTransaction.inputs.hasOwnProperty(key)) {
+                        const thisInput = currentTransaction.inputs[key];
+                        tempOutput = tempUTXOs[thisInput.transactionOutputId];
+                        //
+                        if (!tempOutput) {
+                            console.log(`#Referenced input on transaction[${i}] is Missing`);
+                            return false;
+                        }
+                        //
+                        if (input.UTXO.amount !== tempOutput.amount) {
+                            console.log(`#Referenced input on transaction[${i}] has invalid amount`);
+                            return false;
+                        }
+                        delete tempUTXOs[thisInput.transactionOutputId];
+                    }
+                }
+                // add the outputs to temp outputs
+                for (let j = 0; j < currentTransaction.outputs.length; j++) {
+                   const thisOutput = currentTransaction.outputs[j];
+                   tempUTXOs[thisOutput.id] = thisOutput;
+                }
+                //
+                if (currentTransaction.outputs[0].recipient !== currentTransaction.recipient) {
+                    console.log(`#Transaction[${i}] output recipient isnot who it should be`);
+                    return false;
+                }
+                if (currentTransaction.outputs[1].recipient !== currentTransaction.sender) {
+                    console.log(`#Transaction[${i}] output 'change' address is not sender`);
+                    return false;
+                }
+            }
+            // check the next block
+            previousBlock = currentBlock;
             currentIndex += 1;
         }
         // return true if no problems found in the chain
+        console.log('\nBlockchain is valid');
         return true;
     }
     returnNodeAddresses () {
