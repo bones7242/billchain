@@ -14,6 +14,7 @@ nodeIdentifier = randomId('xNAx', 40);
 
 // instantiate the blockchain
 const blockchain = new Blockchain();
+const wallet = new Wallet();
 
 // add routes
 app.get('/mine', (req, res) => {
