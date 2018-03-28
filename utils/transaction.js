@@ -2,6 +2,8 @@ const crypto = require('crypto');
 const EC = require('elliptic').ec;
 const ec = new EC('secp256k1');
 
+const TransactionOutput = require('./transactionOutput.js');
+
 class Transaction {
     constructor (sender, recipient, amount, inputs) {
         console.log('\n');

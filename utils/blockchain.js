@@ -8,6 +8,9 @@ try {
 } catch (err) {
     console.log('[!] crypto support is disabled');
 }
+
+const Transaction = require('./transaction.js');
+
 // declare Blockchain class
 class Blockchain {
     constructor() {
@@ -46,14 +49,10 @@ class Blockchain {
         :param previousHash: (optional) <str> Hash of previous Block
         :return: <dict> New Block
         */
-        const block = {
-            index: this.chain.length + 1,
-            timestamp: Date.now(),
-            transactions: this.currentTransactions,
-            proof: proof,
-            previousHash: previousHash || this.hash(this.chain[-1]),
-
-        }
+        const currentChainLength = this.chain.length;
+        const transactions = this.currentTransactions;
+        previousHash = previousHash || this.hash(this.chain[-1]);
+        const block = new Block(currentChainLength, transactions, proof, previousHash);
         // reset the current list of transactions
         this.currentTransactions = [];
         this.chain.push(block);
