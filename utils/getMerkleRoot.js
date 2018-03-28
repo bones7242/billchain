@@ -1,5 +1,7 @@
-function getMerkleRoot (transactionsArray) {
-    const hashSeed = 'billbitt';
+const crypto = require('crypto');
+const hashSeed = 'billbitt';
+
+module.exports = (transactionsArray) => {
     let count = transactionsArray.length;
     let previousTreeLayer = [];
     transactionsArray.forEach(transaction => {
@@ -22,6 +24,4 @@ function getMerkleRoot (transactionsArray) {
        merkleRoot = treeLayer[0];
     };
     return merkleRoot;
-}
-
-module.exports = getMerkleRoot;
+};

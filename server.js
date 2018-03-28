@@ -1,5 +1,5 @@
 const express = require('express');
-const Blockchain = require('./utils/blockchain.js');
+const Blockchain = require('./classes/blockchain.js');
 const randomId = require('./utils/randomId.js');
 const jsonBodyParser = require('body-parser').json();
 

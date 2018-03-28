@@ -1,5 +1,3 @@
-const crypto = require('crypto');
-
 class TransactionInput {
     constructor(transactionOutputId) {
         console.log('\n');

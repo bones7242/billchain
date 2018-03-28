@@ -1,5 +1,5 @@
-const Wallet = require('./utils/wallet.js');
-const Transaction = require('./utils/transaction.js');
+const Wallet = require('./classes/wallet.js');
+const Transaction = require('./classes/transaction.js');
 
 //Create the new wallets
 walletA = new Wallet();
