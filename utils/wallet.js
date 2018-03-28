@@ -61,7 +61,13 @@ class Wallet {
         const newTransaction = new Transaction(this.publicKey, recipient, amount, inputs);
         // sign the new transaction with the private key from this wallet
         newTransaction.generateSignature(this.privateKey);
-
+        // remove the used inputs from our available utxos
+        for (let i = 0; i < inputs.length; i++) {
+            const transactionOutputId = inputs[i].transactionOutputId;
+            delete this.UTXOs[transactionOutputId];
+        }
+        // return the transaction
+        return newTransaction;
     }
 }
 
