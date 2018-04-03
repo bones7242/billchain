@@ -19,64 +19,74 @@ const getDifficultyString = require('../utils/getDifficultyString.js');
 class Blockchain {
     constructor() {
         this.chain = [];
-        this.currentTransactions = [];
+        // this.currentTransactions = [];
         this.difficulty = 3;
         this.hashSeed = 'billbitt';
         this.nodes = {};
         this.UTXOs = {};
-        this.genesisBlock = null;
-        this.minimumTransaction = 0.01;
-        this.walletA = new Wallet();
-        this.walletB = new Wallet();
-        this.coinbase = new Wallet();
-
+        this.minimumTransaction = 1;
+        // bind functions
+        this.getChainUtxos = this.getChainUtxos.bind(this);
+        this.removeChainUtxo = this.removeChainUtxo.bind(this);
+        this.addChainUtxo = this.addChainUtxo.bind(this);
+        // create coinbase wallet
+        this.coinbase = new Wallet(this.getChainUtxos);
+        // create test wallets
+        this.walletA = new Wallet(this.getChainUtxos);
+        this.walletB = new Wallet(this.getChainUtxos);
         // generate first 'genesis' block
         this.createGenesisBlock();
+        // run tests
         this.newChainTest();
-        // this.newBlock(1, 100);
         // print some stats to make sure first block was created correctly
-        this.printChain();
+        // this.printChain();
+    }
+    getChainUtxos () {
+        return this.UTXOs;
+    }
+    removeChainUtxo (id) {
+        delete this.UTXOs[id];
+    }
+    addChainUtxo (transactionOutput) {
+        this.UTXOs[transactionOutput.id] = transactionOutput;
     }
     newChainTest () {
         //testing
-        const block1 = new Block(this.lastBlock().hash);
-        console.log("\nWalletA's balance is: " + this.walletA.getBalance());
+        const block1 = new Block(this.lastBlock().hash, this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
+        console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
         console.log("\nWalletA is Attempting to send funds (40) to WalletB...");
         block1.addTransaction(this.walletA.generateTransaction(this.walletB.publicKey, 40));
         this.addBlock(block1);
-        console.log("\nWalletA's balance is: " + this.walletA.getBalance());
-        console.log("WalletB's balance is: " + this.walletB.getBalance());
+        console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
+        console.log("WalletB's balance is: " + this.walletB.getBalanceAndUpdateWalletUTXOs());
 
-        const block2 = new Block(this.lastBlock().hash);
+        const block2 = new Block(this.lastBlock().hash, this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
         console.log("\nWalletA Attempting to send more funds (1000) than it has...");
         block2.addTransaction(this.walletA.generateTransaction(this.walletB.publicKey, 1000));
         this.addBlock(block2);
-        console.log("\nWalletA's balance is: " + this.walletA.getBalance());
-        console.log("WalletB's balance is: " + this.walletB.getBalance());
+        console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
+        console.log("WalletB's balance is: " + this.walletB.getBalanceAndUpdateWalletUTXOs());
 
-        const block3 = new Block(this.lastBlock().hash);
+        const block3 = new Block(this.lastBlock().hash, this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
         console.log("\nWalletB is Attempting to send funds (20) to WalletA...");
         block3.addTransaction(this.walletB.generateTransaction(this.walletA.publicKey, 20));
-        console.log("\nWalletA's balance is: " + this.walletA.getBalance());
-        console.log("WalletB's balance is: " + this.walletB.getBalance());
+        console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
+        console.log("WalletB's balance is: " + this.walletB.getBalanceAndUpdateWalletUTXOs());
 
         console.log('is this chain valid:', this.validChain(this.chain));
     }
     printChain () {
         console.log('chain:', this.chain);
     }
-    // printLastBlock () {
-    //     console.log('last block:', this.lastBlock());
-    // }
-    // printBlock (blockNumber) {
-    //     if (blockNumber < 1 || blockNumber > this.chain.length) {
-    //         return console.log(`error: block #${blockNumber} does not exist in the chain`);
-    //     }
-    //     console.log(`block #${blockNumber}:`, this.chain[blockNumber - 1]);
-    // }
     createGenesisBlock () {
+        console.log('\ncreating genesis transaction');
         // create genesis transaction
-        let genesisTransaction = new Transaction(this.coinbase.publicKey, this.walletA.publicKey, 100, null);
+        let genesisTransaction = new Transaction(
+            this.coinbase.publicKey,
+            this.walletA.publicKey,
+            100,
+            null
+        );
         //manually sign the genesis transaction
         genesisTransaction.generateSignature(this.coinbase.privateKey);
         // manually set the txid
@@ -94,50 +104,48 @@ class Blockchain {
 
         // create genesis block
         console.log('Creating and mining genesis block...');
-        const genesis = new Block('0');
-        genesis.addTransaction(genesisTransaction);
+        const genesisBlock = new Block('0', this.removeChainUtxo, this.addChainUtxo, null, null);
+        genesisBlock.addTransaction(genesisTransaction);
         this.genesisTransactionOutput = genesisTransactionOutput; // store the genesis UTXO
-        this.genesisTransaction = genesisTransaction;  // store the genesis transaction
-        this.genesisBlock = genesis;  // store the genesis block
-        this.addBlock(genesis);
+        this.addBlock(genesisBlock);
 
-    }
-    newBlock (proof, previousHash = null) {
-        /*
-        Creates a new Block and adds it to the chain
-
-        :param proof: <int> the proof given by the Proof of Work algorithm
-        :param previousHash: (optional) <str> Hash of previous Block
-        :return: <dict> New Block
-        */
-
-        // reset the current list of transactions
-        this.currentTransactions = [];
-        this.chain.push(block);
-        return block;
     }
     addBlock (newBlock) {
         newBlock.mineBlock(this.difficulty);
         this.chain.push(newBlock);
         return newBlock;
     }
-    newTransaction (sender, recipient, amount) {
-        /*
-        Adds a new transaction to the list of transactions
-
-        :param sender: <str> Address of the Sender
-        :param recipient: <str> Address of the Recipient
-        :param amount <int> Amount
-        :return: <int> The index of the Block that will hold this transaction
-        */
-        const transaction = {
-            sender,
-            recipient,
-            amount,
-        };
-        this.currentTransactions.push(transaction);
-        return this.lastBlock().index + 1;
-    };
+    // newBlock (proof, previousHash = null) {
+    //     /*
+    //     Creates a new Block and adds it to the chain
+    //
+    //     :param proof: <int> the proof given by the Proof of Work algorithm
+    //     :param previousHash: (optional) <str> Hash of previous Block
+    //     :return: <dict> New Block
+    //     */
+    //
+    //     // reset the current list of transactions
+    //     this.currentTransactions = [];
+    //     this.chain.push(block);
+    //     return block;
+    // }
+    // newTransaction (sender, recipient, amount) {
+    //     /*
+    //     Adds a new transaction to the list of transactions
+    //
+    //     :param sender: <str> Address of the Sender
+    //     :param recipient: <str> Address of the Recipient
+    //     :param amount <int> Amount
+    //     :return: <int> The index of the Block that will hold this transaction
+    //     */
+    //     const transaction = {
+    //         sender,
+    //         recipient,
+    //         amount,
+    //     };
+    //     this.currentTransactions.push(transaction);
+    //     return this.lastBlock().index + 1;
+    // };
     lastBlock () {
         // returns the last Block in the chain
         const lastBlock = this.chain.length - 1;

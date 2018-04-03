@@ -4,9 +4,8 @@ const getMerkleRoot = require('../utils/getMerkleRoot.js');
 const getDifficultyString = require('../utils/getDifficultyString.js');
 
 class Block {
-    constructor(previousHash) {
-        console.log('\n');
-        console.log('creating a block');
+    constructor(previousHash, removeChainUtxo, addChainUtxo, minimumTransaction, getChainUtxos) {
+        console.log('\ncreating a block');
         // define vars
         this.hash = null;
         this.previousHash = null;
@@ -14,6 +13,11 @@ class Block {
         this.transactions = [];
         this.timestamp = null;
         this.nonce = null;
+        // info/methods passed from the blockchain class
+        this.removeChainUtxo = removeChainUtxo;
+        this.addChainUtxo = addChainUtxo;
+        this.minimumTransaction = minimumTransaction;
+        this.getChainUtxos = getChainUtxos;
         // construct
         this.previousHash = previousHash;
         this.timestamp = Date.now();
@@ -33,12 +37,13 @@ class Block {
     mineBlock (difficulty) {
         this.merkleRoot = getMerkleRoot(this.transactions);
         const target = getDifficultyString(difficulty);
+        this.hash = this.calculateHash();
         while (!(this.hash.substring(0, difficulty) === target)) {
             this.nonce++;
             this.hash = this.calculateHash();
 
         }
-        console.log('Block Mined! Hash =', this.hash);
+        console.log('\nBlock Mined! Hash =', this.hash);
     }
     addTransaction (transaction) {
         // process transaction and check if valid,
@@ -46,14 +51,16 @@ class Block {
         if (!transaction) {
             return false;
         }
-        if((this.previousHash !== "0")) {
-            if(!transaction.processTransaction()) {
+        if((this.previousHash !== "0")) {  // ignore if genesis block
+            const processedSuccessfully = transaction.processTransaction(this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
+            if(!processedSuccessfully) {
                 console.log('Transaction failed to process. Discarded.');
                 return false;
             }
         }
-        this.transactions.push(transaction);
-        console.log('Transaction successfully added to Block');
+        this.transactions.push(transaction); // add the processed Transaction
+        console.log('\nTransaction successfully added to Block');
+        console.log(transaction);
         return true;
     }
 

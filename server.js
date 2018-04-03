@@ -14,9 +14,9 @@ nodeIdentifier = randomId('xNAx', 40);
 
 // instantiate the blockchain
 const blockchain = new Blockchain();
-const wallet = new Wallet();
 
 // add routes
+// mine the current block
 app.get('/mine', (req, res) => {
     // We run the proof of work algorithm to get the next proof...
     const lastBlock = blockchain.lastBlock();
@@ -27,7 +27,7 @@ app.get('/mine', (req, res) => {
     // the sender is '0' to signify that this node has mined a new coin.
     blockchain.newTransaction('0', nodeIdentifier, 1);
 
-    // Forte the new Block by adding it to the chain
+    // Forge the new Block by adding it to the chain
     const previousHash = blockchain.hash(lastBlock);
     const block = blockchain.newBlock(proof, previousHash);
 
@@ -42,6 +42,7 @@ app.get('/mine', (req, res) => {
     res.status(200).json(response);
 });
 
+// receive a new transaction, and add it to the block to be mined
 app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
     console.log('/transactions/new/,', body);
     // check that the required fields are in the post'ed data
@@ -55,6 +56,7 @@ app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
     return res.status(201).json(response);
 });
 
+// return the chain
 app.get('/chain', (req, res) => {
     const response = {
         chain: blockchain.chain,
@@ -63,6 +65,7 @@ app.get('/chain', (req, res) => {
     return res.json(response);
 });
 
+// register a new node
 app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
     // accept a list of new nodes in the form of URLs
     const nodeList = body.nodes;
@@ -79,9 +82,10 @@ app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
     return res.status(201).json(response);
 });
 
-
+// check with other nodes to sync chains
 app.get('/nodes/resolve', (req, res) => {
-    // implement Consensus Algorithm, which resolves any confligs, to ensure a node has the correct chain
+    // implement Consensus Algorithm, which resolves any confligs,
+    // to ensure a node has the correct chain
     blockchain.resolveConflicts()
         .then(replaced => {
             if (replaced) {
