@@ -51,7 +51,6 @@ class Wallet {
             console.log('#Not enough funds to send transaction.  Transaction discarded.');
             return null;
         }
-        console.log('generateTransaction > current balance:', currentBalance);
         // create array list of inputs from the UTXOs in this wallet
         // that total more than the amount to be sent
         let inputs = [];

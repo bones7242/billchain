@@ -87,16 +87,17 @@ class Transaction {
         this.outputs[1] = new TransactionOutput(this.sender, leftOver, this.txid);
 
         // add outputs to the chain's UTXO list
-        this.outputs.forEach( thisUtxo => {
-            addChainUtxo(thisUtxo); // i.e. UTXO[thisOutput.id] = thisOutput;
-        })
+        this.outputs.forEach( transactionOutput => {
+            console.log('adding UTXO to main chain:', transactionOutput.id);
+            addChainUtxo(transactionOutput);
+        });
 
-        // remove transaction inputs from master UTXO list as spent
-        for (let key in this.inputs) {
-            if (this.inputs.hasOwnProperty(key)) {
-                removeChainUtxo(key) // i.e. delete UTXO[key];
-            }
-        }
+        // remove this input's output from the chain's UTXO list because it is spent
+        this.inputs.forEach( input => {
+            const transactionOutputId = input.transactionOutputId;
+            console.log('deleting UTXO from main chain:', transactionOutputId);
+            removeChainUtxo(transactionOutputId);
+        });
         return true;
 
     }
