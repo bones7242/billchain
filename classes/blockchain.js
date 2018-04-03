@@ -197,7 +197,7 @@ class Blockchain {
             for (let i = 0; i < currentBlock.transactions.length; i++) {
                 const currentTransaction = currentBlock.transactions[i];
                 // verify the tx signature
-                if(!currentTransaction.verifiySignature()) {
+                if(!currentTransaction.verifySignature()) {
                     console.log(`#Signature on transaction[${i}] is invalid`);
                     return false;
                 }

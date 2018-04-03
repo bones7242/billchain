@@ -17,4 +17,4 @@ const transaction = new Transaction(
 transaction.generateSignature(walletA.privateKey);
 console.log(transaction);
 //Verify the signature works and verify it from the public key
-console.log("Is signature verified:", transaction.verifiySignature());
+console.log("Is signature verified:", transaction.verifySignature());
