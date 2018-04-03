@@ -108,5 +108,5 @@ app.get('/nodes/resolve', (req, res) => {
 
 
 app.listen(PORT, () => {
-    console.log(`Blockchain node listening on port ${PORT}!`)
+    console.log(`\nBlockchain node listening on port ${PORT}!`)
 });

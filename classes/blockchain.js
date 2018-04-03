@@ -73,7 +73,7 @@ class Blockchain {
         console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
         console.log("WalletB's balance is: " + this.walletB.getBalanceAndUpdateWalletUTXOs());
 
-        console.log('is this chain valid:', this.validChain(this.chain));
+        console.log('\nis this chain valid?', this.validChain(this.chain));
     }
     printChain () {
         console.log('chain:', this.chain);
@@ -213,11 +213,11 @@ class Blockchain {
                         tempOutput = tempUTXOs[thisInput.transactionOutputId];
                         //
                         if (!tempOutput) {
-                            console.log(`#Referenced input on transaction[${i}] is Missing`);
+                            console.log(`#Referenced input on transaction[${i}] is missing`);
                             return false;
                         }
                         //
-                        if (input.UTXO.amount !== tempOutput.amount) {
+                        if (thisInput.UTXO.amount !== tempOutput.amount) {
                             console.log(`#Referenced input on transaction[${i}] has invalid amount`);
                             return false;
                         }
@@ -244,7 +244,6 @@ class Blockchain {
             currentIndex += 1;
         }
         // return true if no problems found in the chain
-        console.log('\nBlockchain is valid');
         return true;
     }
     returnNodeAddresses () {
