@@ -14,32 +14,19 @@ nodeIdentifier = randomId('xNAx', 40);
 
 // instantiate the blockchain
 const blockchain = new Blockchain();
-blockchain.startminer(10);
 
 // add routes
 // mine the current block
-app.get('/mine', (req, res) => {
-    // We run the proof of work algorithm to get the next proof...
-    const lastBlock = blockchain.lastBlock();
-    const lastProof = lastBlock.proof;
-    const proof = blockchain.proofOfWork(lastProof);
+app.get('/mine/start', (req, res) => {
+    const interval = 10; // tbd: take this from a param
+    blockchain.startMining(interval);
+    const response = {message: `Your miner is now mining every ${interval} seconds.`};
+    res.status(200).json(response);
+});
 
-    // We must receive a reward for finding the proof.
-    // the sender is '0' to signify that this node has mined a new coin.
-    blockchain.newTransaction('0', nodeIdentifier, 1);
-
-    // Forge the new Block by adding it to the chain
-    const previousHash = blockchain.hash(lastBlock);
-    const block = blockchain.newBlock(proof, previousHash);
-
-    const response = {
-        message: 'New Block Forged',
-        index: block.index,
-        transactions: block.transactions,
-        proof: block.proof,
-        previousHash: block.previousHash,
-    }
-
+app.get('/mine/stop', (req, res) => {
+    blockchain.stopMining();
+    const response = {message: `Your miner has successfully stopped`};
     res.status(200).json(response);
 });
 

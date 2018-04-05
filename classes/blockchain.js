@@ -332,7 +332,7 @@ class Blockchain {
         this.resolveConflicts();
         return minedBlock;
     }
-    startMiner (interval) {
+    startMining (interval) {
         this.miner = setInterval(this.mineBlock, interval * 1000);
     }
     stopMining () {
