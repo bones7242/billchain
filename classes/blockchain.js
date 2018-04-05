@@ -19,12 +19,13 @@ const getDifficultyString = require('../utils/getDifficultyString.js');
 class Blockchain {
     constructor() {
         this.chain = [];
-        // this.currentTransactions = [];
+        this.transactionQueue = [];
         this.difficulty = 3;
         this.hashSeed = 'billbitt';
         this.nodes = {};
         this.UTXOs = {};
         this.minimumTransaction = 1;
+        this.miner = null;
         // bind functions
         this.getChainUtxos = this.getChainUtxos.bind(this);
         this.removeChainUtxo = this.removeChainUtxo.bind(this);
@@ -38,8 +39,6 @@ class Blockchain {
         this.createGenesisBlock();
         // run tests
         this.newChainTest();
-        // print some stats to make sure first block was created correctly
-        // this.printChain();
     }
     getChainUtxos () {
         return this.UTXOs;
@@ -76,7 +75,9 @@ class Blockchain {
         console.log('\nis this chain valid?', this.validChain(this.chain));
     }
     printChain () {
-        console.log('chain:', this.chain);
+        console.log('# Start Chain');
+        console.log(this.chain);
+        console.log('# End chain');
     }
     createGenesisBlock () {
         console.log('\ncreating genesis transaction');
@@ -110,42 +111,52 @@ class Blockchain {
         this.addBlock(genesisBlock);
 
     }
+    newBlock () {
+        /*
+        Creates a new Block to be added to the chain
+
+        :param proof: <int> the proof given by the Proof of Work algorithm
+        :param previousHash: (optional) <str> Hash of previous Block
+        :return: <dict> New Block
+        */
+
+        // create the block
+        const newBlock = new Block(
+            this.lastBlock().hash,
+            this.removeChainUtxo,
+            this.addChainUtxo, this.minimumTransaction,
+            this.getChainUtxos
+        );
+
+        // tbd: add a coinbase transaction
+
+        // add up to 9 other transactions from the queue to the block
+        while (this.transactionQueue.length !== 0 && newBlock.transactions.length <= 10){
+            let newTransaction = this.transactionQueue.pop();
+            newBlock.addTransaction(newTransaction)
+        }
+
+        // return the block
+        return newBlock;
+    }
     addBlock (newBlock) {
         newBlock.mineBlock(this.difficulty);
         this.chain.push(newBlock);
         return newBlock;
     }
-    // newBlock (proof, previousHash = null) {
-    //     /*
-    //     Creates a new Block and adds it to the chain
-    //
-    //     :param proof: <int> the proof given by the Proof of Work algorithm
-    //     :param previousHash: (optional) <str> Hash of previous Block
-    //     :return: <dict> New Block
-    //     */
-    //
-    //     // reset the current list of transactions
-    //     this.currentTransactions = [];
-    //     this.chain.push(block);
-    //     return block;
-    // }
-    // newTransaction (sender, recipient, amount) {
-    //     /*
-    //     Adds a new transaction to the list of transactions
-    //
-    //     :param sender: <str> Address of the Sender
-    //     :param recipient: <str> Address of the Recipient
-    //     :param amount <int> Amount
-    //     :return: <int> The index of the Block that will hold this transaction
-    //     */
-    //     const transaction = {
-    //         sender,
-    //         recipient,
-    //         amount,
-    //     };
-    //     this.currentTransactions.push(transaction);
-    //     return this.lastBlock().index + 1;
-    // };
+    newTransaction (sender, recipient, amount) {
+        /*
+        Adds a new transaction to the list of transactions
+
+        :param sender: <str> Address of the Sender
+        :param recipient: <str> Address of the Recipient
+        :param amount <int> Amount
+        :return: <int> The index of the Block that will hold this transaction
+        */
+        const transaction = new Transaction(sender, recipient, amount);
+        this.transactionQueue.push(transaction);
+        return this.transactionQueue.length;
+    };
     lastBlock () {
         // returns the last Block in the chain
         const lastBlock = this.chain.length - 1;
@@ -314,6 +325,18 @@ class Blockchain {
                     reject(error);
                 });
         })
+    };
+    mineBlock () {
+        const newBlock = this.newBlock();
+        const minedBlock = this.addBlock(newBlock);
+        this.resolveConflicts();
+        return minedBlock;
+    }
+    startMiner (interval) {
+        this.miner = setInterval(this.mineBlock, interval * 1000);
+    }
+    stopMining () {
+        // stop the miner setInterval
     }
 }
 

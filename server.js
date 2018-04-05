@@ -14,6 +14,7 @@ nodeIdentifier = randomId('xNAx', 40);
 
 // instantiate the blockchain
 const blockchain = new Blockchain();
+blockchain.startminer(10);
 
 // add routes
 // mine the current block
@@ -52,7 +53,7 @@ app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
     // create a new transaction
     const index = blockchain.newTransaction(body.sender, body.recipient, body.amount);
     // create response
-    const response = {message: `Transaction will be added to Block ${index}`};
+    const response = {message: `Transaction is number ${index} in the queue`};
     return res.status(201).json(response);
 });
 
