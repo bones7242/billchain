@@ -291,7 +291,7 @@ class Blockchain {
                             resolve(`error with node ${node}: ${error.message}`);
                         });
                 })
-            })
+            });
             // get responses from all the nodes
             Promise.all(promises)
                 .then(responsesArray => {
@@ -336,7 +336,7 @@ class Blockchain {
         this.miner = setInterval(this.mineBlock, interval * 1000);
     }
     stopMining () {
-        // stop the miner setInterval
+        clearInterval(this.miner);
     }
 }
 

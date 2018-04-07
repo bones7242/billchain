@@ -63,7 +63,6 @@ class Block {
         console.log(transaction);
         return true;
     }
-
 }
 
 module.exports = Block;
