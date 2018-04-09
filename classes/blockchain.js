@@ -1,14 +1,5 @@
 // import dependencies
 const axios = require('axios');
-// check for crypto support
-let crypto;
-try {
-    crypto = require('crypto');
-    console.log('[x] crypto is supported');
-} catch (err) {
-    console.log('[!] crypto support is disabled');
-}
-
 const Wallet = require('./wallet.js');
 const Block = require('./block.js');
 const TransactionOutput = require('./transactionOutput.js');
@@ -30,15 +21,13 @@ class Blockchain {
         this.getChainUtxos = this.getChainUtxos.bind(this);
         this.removeChainUtxo = this.removeChainUtxo.bind(this);
         this.addChainUtxo = this.addChainUtxo.bind(this);
+        this.mineBlock = this.mineBlock.bind(this);
         // create coinbase wallet
         this.coinbase = new Wallet(this.getChainUtxos);
-        // create test wallets
-        this.walletA = new Wallet(this.getChainUtxos);
-        this.walletB = new Wallet(this.getChainUtxos);
+        // create another wallets
+        this.primaryWallet = new Wallet(this.getChainUtxos);
         // generate first 'genesis' block
         this.createGenesisBlock();
-        // run tests
-        this.newChainTest();
     }
     getChainUtxos () {
         return this.UTXOs;
@@ -48,31 +37,6 @@ class Blockchain {
     }
     addChainUtxo (transactionOutput) {
         this.UTXOs[transactionOutput.id] = transactionOutput;
-    }
-    newChainTest () {
-        //testing
-        const block1 = new Block(this.lastBlock().hash, this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
-        console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
-        console.log("\nWalletA is Attempting to send funds (40) to WalletB...");
-        block1.addTransaction(this.walletA.generateTransaction(this.walletB.publicKey, 40));
-        this.addBlock(block1);
-        console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
-        console.log("WalletB's balance is: " + this.walletB.getBalanceAndUpdateWalletUTXOs());
-
-        const block2 = new Block(this.lastBlock().hash, this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
-        console.log("\nWalletA Attempting to send more funds (1000) than it has...");
-        block2.addTransaction(this.walletA.generateTransaction(this.walletB.publicKey, 1000));
-        this.addBlock(block2);
-        console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
-        console.log("WalletB's balance is: " + this.walletB.getBalanceAndUpdateWalletUTXOs());
-
-        const block3 = new Block(this.lastBlock().hash, this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
-        console.log("\nWalletB is Attempting to send funds (20) to WalletA...");
-        block3.addTransaction(this.walletB.generateTransaction(this.walletA.publicKey, 20));
-        console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
-        console.log("WalletB's balance is: " + this.walletB.getBalanceAndUpdateWalletUTXOs());
-
-        console.log('\nis this chain valid?', this.validChain(this.chain));
     }
     printChain () {
         console.log('# Start Chain');
@@ -144,16 +108,17 @@ class Blockchain {
         this.chain.push(newBlock);
         return newBlock;
     }
-    newTransaction (sender, recipient, amount) {
+    newTransaction (recipient, amount) {
         /*
         Adds a new transaction to the list of transactions
-
-        :param sender: <str> Address of the Sender
-        :param recipient: <str> Address of the Recipient
-        :param amount <int> Amount
-        :return: <int> The index of the Block that will hold this transaction
         */
-        const transaction = new Transaction(sender, recipient, amount);
+        const transaction = this.primaryWallet.generateTransaction(recipient, amount);
+        this.queueTransaction(transaction);
+    };
+    queueTransaction (transaction) {
+        /*
+        Adds a transaction to the list of transactions
+        */
         this.transactionQueue.push(transaction);
         return this.transactionQueue.length;
     };
@@ -330,6 +295,7 @@ class Blockchain {
         const newBlock = this.newBlock();
         const minedBlock = this.addBlock(newBlock);
         this.resolveConflicts();
+        console.log("Primary Wallet balance is: " + this.primaryWallet.getBalanceAndUpdateWalletUTXOs());
         return minedBlock;
     }
     startMining (interval) {

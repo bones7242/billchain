@@ -12,13 +12,37 @@ const app = express();
 // Generate a globally unique address for this node
 nodeIdentifier = randomId('xNAx', 40);
 
+require('./utils/checkCryptoSupport.js');
+
 // instantiate the blockchain
 const blockchain = new Blockchain();
 
 // add routes
+
+app.get('/details', (req, res) => {
+    const response = {
+        message: `details for node ${nodeIdentifier}`,
+        id: nodeIdentifier,
+        address: `http://localhost:${PORT}`,
+        primaryWallet: {
+            address: blockchain.primaryWallet.publicKey,
+            balance: blockchain.primaryWallet.getBalanceAndUpdateWalletUTXOs(),
+        },
+        coinbase: {
+            address: blockchain.coinbase.publicKey,
+            balance: blockchain.coinbase.getBalanceAndUpdateWalletUTXOs(),
+        },
+        txQueue: blockchain.transactionQueue,
+        difficulty: blockchain.difficulty,
+        peers: blockchain.returnNodeAddresses(),
+        chain: blockchain.chain,
+    }
+    return res.status(201).json(response);
+});
+
 // mine the current block
-app.get('/mine/start', (req, res) => {
-    const interval = 10; // tbd: take this from a param
+app.get('/mine/start/:interval', (req, res) => {
+    const interval = parseInt(req.params.interval); // tbd: take this from a param
     blockchain.startMining(interval);
     const response = {message: `Your miner is now mining every ${interval} seconds.`};
     res.status(200).json(response);
@@ -30,18 +54,23 @@ app.get('/mine/stop', (req, res) => {
     res.status(200).json(response);
 });
 
-// receive a new transaction, and add it to the block to be mined
+// create a new transaction and add it to the que
 app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
-    console.log('/transactions/new/,', body);
     // check that the required fields are in the post'ed data
-    if (!body.sender || !body.recipient || !body.amount) {
+    if (!body.recipient || !body.amount) {
         return res.status(400).send('missing values');
     }
     // create a new transaction
-    const index = blockchain.newTransaction(body.sender, body.recipient, body.amount);
+    const index = blockchain.newTransaction(body.recipient, body.amount);
     // create response
     const response = {message: `Transaction is number ${index} in the queue`};
     return res.status(201).json(response);
+});
+
+// receive a transaction, and add it to the transaction queue
+app.post('/transactions/queue', jsonBodyParser, ({ body }, res) => {
+    // receive a transaction from another node
+    // put that node in you queue of transactions
 });
 
 // return the chain
@@ -49,7 +78,7 @@ app.get('/chain', (req, res) => {
     const response = {
         chain: blockchain.chain,
         length: blockchain.chain.length,
-    }
+    };
     return res.json(response);
 });
 
@@ -92,6 +121,28 @@ app.get('/nodes/resolve', (req, res) => {
         .catch(error => {
             res.status(400).json(error.message);
         });
+});
+
+app.get('/wallet/primary', (req, res) => {
+    const response = {
+        message: `primary wallet on node ${nodeIdentifier}`,
+        primaryWallet: {
+            address: blockchain.primaryWallet.publicKey,
+            balance: blockchain.primaryWallet.getBalanceAndUpdateWalletUTXOs(),
+        },
+    };
+    return res.status(201).json(response);
+});
+
+app.get('/wallet/coinbase', (req, res) => {
+    const response = {
+        message: `coinbase wallet on node ${nodeIdentifier}`,
+        coinbase: {
+            address: blockchain.coinbase.publicKey,
+            balance: blockchain.coinbase.getBalanceAndUpdateWalletUTXOs(),
+        },
+    };
+    return res.status(201).json(response);
 });
 
 
