@@ -30,7 +30,6 @@ app.get('/details', (req, res) => {
         },
         coinbase: {
             address: blockchain.coinbase.publicKey,
-            balance: blockchain.coinbase.getBalanceAndUpdateWalletUTXOs(),
         },
         txQueue: blockchain.transactionQueue,
         difficulty: blockchain.difficulty,
@@ -101,7 +100,7 @@ app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
 
 // check with other nodes to sync chains
 app.get('/nodes/resolve', (req, res) => {
-    // implement Consensus Algorithm, which resolves any confligs,
+    // implement Consensus Algorithm, which resolves any conflicts,
     // to ensure a node has the correct chain
     blockchain.resolveConflicts()
         .then(replaced => {

@@ -2,8 +2,10 @@
 const axios = require('axios');
 const Wallet = require('./wallet.js');
 const Block = require('./block.js');
+const BlockToVerify = require('./blockToVerify.js');
 const TransactionOutput = require('./transactionOutput.js');
 const Transaction = require('./transaction.js');
+const TransactionToVerify = require('./transactionToVerify.js');
 const getDifficultyString = require('../utils/getDifficultyString.js');
 
 // declare Blockchain class
@@ -38,17 +40,12 @@ class Blockchain {
     addChainUtxo (transactionOutput) {
         this.UTXOs[transactionOutput.id] = transactionOutput;
     }
-    printChain () {
-        console.log('# Start Chain');
-        console.log(this.chain);
-        console.log('# End chain');
-    }
     createGenesisBlock () {
         console.log('\ncreating genesis transaction');
         // create genesis transaction
         let genesisTransaction = new Transaction(
             this.coinbase.publicKey,
-            this.walletA.publicKey,
+            this.primaryWallet.publicKey,
             100,
             null
         );
@@ -78,10 +75,6 @@ class Blockchain {
     newBlock () {
         /*
         Creates a new Block to be added to the chain
-
-        :param proof: <int> the proof given by the Proof of Work algorithm
-        :param previousHash: (optional) <str> Hash of previous Block
-        :return: <dict> New Block
         */
 
         // create the block
@@ -148,17 +141,23 @@ class Blockchain {
         let currentIndex = 1;
         let tempUTXOs = {};
 
-        tempUTXOs[this.genesisTransactionOutput.id] = this.genesisTransactionOutput;
+        tempUTXOs[this.genesisTransactionOutput.id] = this.genesisTransactionOutput;  // hard code this with the genesis block txo
+
+        // verify that the genesis bocks are the same
+        if (previousBlock !== this.chain[0]) {
+            console.log(`#Genesis blocks are not the same`);
+            return false;
+        }
 
         // check the chain, and return false if any problems
         while (currentIndex < chain.length) {
-            const currentBlock = chain[currentIndex];
+            const currentBlock = new BlockToVerify(chain[currentIndex]);
             // compare registered hash and calculated hash
-            if (currentBlock.hash !== currentBlock.calculateHash()) {
+            if (currentBlock.hash !== BlockToVerify.calculateHash()) {
                 console.log('#Current hashes are not equal');
                 return false;
             }
-            // compare previous hash and registered revious hash
+            // compare previous hash and registered previous hash
             if (previousBlock.hash !== currentBlock.previousHash) {
                 console.log('#previous Hashes not equal');
                 return false;
@@ -171,7 +170,7 @@ class Blockchain {
             // check the block's transactions
             let tempOutput;
             for (let i = 0; i < currentBlock.transactions.length; i++) {
-                const currentTransaction = currentBlock.transactions[i];
+                const currentTransaction = new TransactionToVerify(currentBlock.transactions[i]);
                 // verify the tx signature
                 if(!currentTransaction.verifySignature()) {
                     console.log(`#Signature on transaction[${i}] is invalid`);
@@ -244,10 +243,10 @@ class Blockchain {
             let newChain = null;
             // we're only looking for chains longer than ours
             let maxLength = this.chain.length;
-            // grab and verify the chains from all the nodes in our network
+            // get each node's chain
             const that = this;
             const promises = neighborNodes.map((node) => {
-                return new Promise((resolve,reject) => {
+                return new Promise((resolve, reject) => {
                     axios.get(`${node}/chain`)
                         .then((response)=> {
                             resolve(response)
@@ -257,7 +256,7 @@ class Blockchain {
                         });
                 })
             });
-            // get responses from all the nodes
+            // verify all the chains
             Promise.all(promises)
                 .then(responsesArray => {
                     // check each response
