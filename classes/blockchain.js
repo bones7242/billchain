@@ -54,8 +54,6 @@ class Blockchain {
         );
         //manually sign the genesis transaction
         genesisTransaction.generateSignature(genesisCoinbase.privateKey);
-        // manually set the txid
-        genesisTransaction.txid = '0';
         // add a UTXO to the genesis transaction
         const genesisTransactionOutput = new TransactionOutput(
             genesisTransaction.recipient,
@@ -147,7 +145,7 @@ class Blockchain {
         tempUTXOs[this.genesisTransactionOutput.id] = this.genesisTransactionOutput;  // hard code this with the genesis block txo
 
         // verify that the genesis bocks are the same
-        if (previousBlock !== this.chain[0]) {
+        if (previousBlock.hash !== this.chain[0].hash) {
             console.log(`#Genesis blocks are not the same`);
             return false;
         }
@@ -156,7 +154,7 @@ class Blockchain {
         while (currentIndex < chain.length) {
             const currentBlock = new BlockToVerify(chain[currentIndex]);
             // compare registered hash and calculated hash
-            if (currentBlock.hash !== BlockToVerify.calculateHash()) {
+            if (currentBlock.hash !== currentBlock.calculateHash()) {
                 console.log('#Current hashes are not equal');
                 return false;
             }
