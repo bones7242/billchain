@@ -5,7 +5,7 @@ const getDifficultyString = require('../utils/getDifficultyString.js');
 
 class Block {
     constructor(previousHash, removeChainUtxo, addChainUtxo, minimumTransaction, getChainUtxos) {
-        console.log('\ncreating a block');
+        console.log('\ncreating a block...');
         // define vars
         this.hash = null;
         this.previousHash = null;
@@ -43,7 +43,8 @@ class Block {
             this.hash = this.calculateHash();
 
         }
-        console.log('\nBlock Mined! Hash =', this.hash);
+        console.log('\nBlock Mined! Hash =', this.hash.substring(0,6));
+        console.log(this);
     }
     addTransaction (transaction) {
         // process transaction and check if valid,
@@ -54,13 +55,12 @@ class Block {
         if((this.previousHash !== "0")) {  // ignore if genesis block
             const processedSuccessfully = transaction.processTransaction(this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
             if(!processedSuccessfully) {
-                console.log('Transaction failed to process. Discarded.');
+                console.log('#Transaction failed to process. Discarded.');
                 return false;
             }
         }
         this.transactions.push(transaction); // add the processed Transaction
-        console.log('\nTransaction successfully added to Block');
-        console.log(transaction);
+        console.log('\nTransaction successfully added to block');
         return true;
     }
 }

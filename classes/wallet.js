@@ -5,20 +5,26 @@ const Transaction = require('./transaction.js');
 const TransactionInput = require('./transactionInput.js');
 
 class Wallet {
-    constructor (getChainUtxos) {
+    constructor (getChainUtxos, seedPrivatekey) {
         console.log('\ncreating a new wallet!');
         // declare variables
         this.privateKey = null;
         this.publicKey = null;
         this.UTXOs = {};
         this.getChainUtxos = getChainUtxos;
+        this.seedPrivatekey = seedPrivatekey || null;
         // construct
         this.generateKeyPair();
     }
     generateKeyPair () {
         // create private key
-        const key = ec.genKeyPair();
-        this.privateKey = key;
+        let key;
+        if (this.seedPrivatekey) {
+            key = ec.keyFromPrivate(this.seedPrivatekey, 'hex');
+        } else {
+            key = ec.genKeyPair();
+        }
+        this.privateKey = key.getPrivate('hex');
 
         // create public key
         const pubPoint = key.getPublic();

@@ -14,7 +14,6 @@ class Blockchain {
         this.chain = [];
         this.transactionQueue = [];
         this.difficulty = 3;
-        this.hashSeed = 'billbitt';
         this.nodes = {};
         this.UTXOs = {};
         this.minimumTransaction = 1;
@@ -41,16 +40,20 @@ class Blockchain {
         this.UTXOs[transactionOutput.id] = transactionOutput;
     }
     createGenesisBlock () {
-        console.log('\ncreating genesis transaction');
+        console.log('\ncreating genesis transaction...');
+        // create genesis wallets
+        const genesisCoinbase = new Wallet(null, '4a65851d7639eb284da1fa83e24a2398288d6ab6d1c9d8d7d6b611fc76aa305f');
+        const genesisWallet = new Wallet(null, '2a185918d040455f3fe7e25b322328011e9a31c874f674d53931a4449e7b7239');
+
         // create genesis transaction
         let genesisTransaction = new Transaction(
-            this.coinbase.publicKey,
-            this.primaryWallet.publicKey,
-            100,
+            genesisCoinbase.publicKey,
+            genesisWallet.publicKey,
+            10,
             null
         );
         //manually sign the genesis transaction
-        genesisTransaction.generateSignature(this.coinbase.privateKey);
+        genesisTransaction.generateSignature(genesisCoinbase.privateKey);
         // manually set the txid
         genesisTransaction.txid = '0';
         // add a UTXO to the genesis transaction
@@ -60,15 +63,15 @@ class Blockchain {
             genesisTransaction.txid
         );
         genesisTransaction.outputs[0]= genesisTransactionOutput;
-
         // store the UTXO in the UTXOs list
         this.UTXOs[genesisTransactionOutput.id]= genesisTransactionOutput;
 
         // create genesis block
-        console.log('Creating and mining genesis block...');
+        console.log('\ncreating and mining genesis block...');
         const genesisBlock = new Block('0', this.removeChainUtxo, this.addChainUtxo, null, null);
+        genesisBlock['timestamp'] = new Date('January 13, 1986');
         genesisBlock.addTransaction(genesisTransaction);
-        this.genesisTransactionOutput = genesisTransactionOutput; // store the genesis UTXO
+        this.genesisTransactionOutput = genesisTransactionOutput;
         this.addBlock(genesisBlock);
 
     }
@@ -271,7 +274,7 @@ class Blockchain {
                         } else if (response.status) {
                             console.log(`response returned with status ${response.status}`);
                         } else {
-                            console.log(response);
+                            console.log('response:', response);
                         };
                     }))
                 })

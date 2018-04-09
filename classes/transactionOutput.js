@@ -1,10 +1,10 @@
 const crypto = require('crypto');
+const hashSeed = 'billbitt';
 
 class TransactionOutput {
     constructor(recipient, amount, parentTransactionId) {
-        console.log('\ncreating a transaction output');
+        console.log('\ncreating a transaction output...');
         // define vars
-        this.hashSeed = 'billbitt';
         this.recipient = null;
         this.amount = null;
         this.parentTransactionId = null;
@@ -13,7 +13,7 @@ class TransactionOutput {
         this.recipient = recipient;
         this.amount = amount;
         this.parentTransactionId = parentTransactionId;
-        this.id = crypto.createHmac('sha256', this.hashSeed)
+        this.id = crypto.createHmac('sha256', hashSeed)
             .update(this.recipient + this.amount + this.parentTransactionId)
             .digest('hex');
     }

@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const EC = require('elliptic').ec;
 const ec = new EC('secp256k1');
+const hashSeed = 'billbitt';
 
 
 class TransactionToVerify {
@@ -11,11 +12,10 @@ class TransactionToVerify {
         this.inputs = inputs;
         this.outputs = outputs;
         this.signature = signature;
-        this.hashSeed = 'billbitt';
         this.txid = txid
     }
     calculateHash () {
-        return crypto.createHmac('sha256', this.hashSeed)
+        return crypto.createHmac('sha256', hashSeed)
             .update(this.sender + this.recipient + this.amount + this.inputs)
             .digest('hex');
     }

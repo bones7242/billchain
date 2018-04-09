@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const EC = require('elliptic').ec;
 const ec = new EC('secp256k1');
+const hashSeed = 'billbitt';
 
 const TransactionOutput = require('./transactionOutput.js');
 
@@ -13,17 +14,17 @@ class Transaction {
         this.inputs = inputs;
         this.outputs = [];
         this.signature = null;
-        this.hashSeed = 'billbitt';
         this.txid = this.calculateHash();
     }
     calculateHash () {
-        return crypto.createHmac('sha256', this.hashSeed)
+        return crypto.createHmac('sha256', hashSeed)
             .update(this.sender + this.recipient + this.amount + this.inputs)
             .digest('hex');
     }
     generateSignature (privateKey) {
         const message = this.sender + this.recipient + this.amount;
-        const signature = privateKey.sign(message);
+        const key = ec.keyFromPrivate(privateKey, 'hex');
+        const signature = key.sign(message);
         this.signature = signature.toDER('hex');
 
     }
@@ -46,13 +47,6 @@ class Transaction {
         }
         return total;
     };
-    getOutputsValue () {
-        let total = 0;
-        for (let i = 0; i < this.outputs.length; i++) {
-            total += this.outputs[i].amount;
-        }
-        return total;
-    }
     processTransaction (removeChainUtxo, addChainUtxo, minimumTransaction, getChainUtxos) {
         /*
         Returns true if a new transaction could be generated
@@ -88,14 +82,12 @@ class Transaction {
 
         // add outputs to the chain's UTXO list
         this.outputs.forEach( transactionOutput => {
-            console.log('adding UTXO to main chain:', transactionOutput.id);
             addChainUtxo(transactionOutput);
         });
 
         // remove this input's output from the chain's UTXO list because it is spent
         this.inputs.forEach( input => {
             const transactionOutputId = input.transactionOutputId;
-            console.log('deleting UTXO from main chain:', transactionOutputId);
             removeChainUtxo(transactionOutputId);
         });
         return true;
