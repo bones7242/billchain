@@ -240,8 +240,8 @@ class Blockchain {
     validSideChain () {
         return true;
     }
-    foundCommonRoot (index, hash) {
-        return this.chain[index].previousHash === hash;
+    foundCommonRoot (height, hash) {
+        return this.chain[height].hash === hash;
     }
     requestBlockFromPeer (hash, ip) {
         const url = `${ip}/block/${hash}`;
@@ -257,15 +257,15 @@ class Blockchain {
         // update the chain
         this.chain = newChain;
     }
-    evaluateNewBlock (newBlock, peerIp) {
+    async evaluateNewBlock (newBlock, peerIp) {
         let commonRoot;
         let blockToExamine = newBlock;
         let sideChain = [];
         let height = this.chain.length;
         // find common root:
-        while (!this.foundCommonRoot(depth, blockToExamine)) {
+        while (!this.foundCommonRoot(height, blockToExamine)) {
             sideChain.unshift(blockToExamine);
-            blockToExamine = this.requestBlockFromPeer(blockToExamine.previousHash, peerIp);
+            blockToExamine = await this.requestBlockFromPeer(blockToExamine.previousHash, peerIp);
         }
         commonRoot = this.chain[height];
         console.log('found a common root:', commonRoot);
