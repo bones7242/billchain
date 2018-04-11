@@ -13,11 +13,15 @@ class Blockchain {
     constructor() {
         this.chain = [];
         this.transactionQueue = [];
-        this.difficulty = 3;
-        this.nodes = {};
+        this.difficulty = 5;
+        this.nodes = {
+            "http://127.0.0.1:4000": "http://127.0.0.1:4000",
+            "http://127.0.0.1:3000": "http://127.0.0.1:3000",
+        };
         this.UTXOs = {};
         this.minimumTransaction = 1;
         this.miner = null;
+        this.isMining = false;
         // bind functions
         this.getChainUtxos = this.getChainUtxos.bind(this);
         this.removeChainUtxo = this.removeChainUtxo.bind(this);
@@ -293,16 +297,27 @@ class Blockchain {
     };
     mineBlock () {
         const newBlock = this.newBlock();
-        const minedBlock = this.addBlock(newBlock);
-        this.resolveConflicts();
-        console.log("Primary Wallet balance is: " + this.primaryWallet.getBalanceAndUpdateWalletUTXOs());
-        return minedBlock;
-    }
+        return this.addBlock(newBlock);
+    };
     startMining (interval) {
+        console.log('starting mining');
         this.miner = setInterval(this.mineBlock, interval * 1000);
-    }
+    };
     stopMining () {
+        console.log('stopping mining');
         clearInterval(this.miner);
+    };
+    syncChain () {
+        this.resolveConflicts()
+            .then(replaced => {
+                if (replaced) {
+                    return console.log('Our chain was replaced');
+                }
+                console.log('Our chain is authoritative');
+            })
+            .catch(error => {
+                console.log('error', error);
+            });
     }
 }
 
