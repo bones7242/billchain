@@ -7,6 +7,7 @@ const TransactionOutput = require('./transactionOutput.js');
 const Transaction = require('./transaction.js');
 const TransactionToVerify = require('./transactionToVerify.js');
 const getDifficultyString = require('../utils/getDifficultyString.js');
+const request = require('../utils/request.js');
 
 // declare Blockchain class
 class Blockchain {
@@ -106,16 +107,26 @@ class Blockchain {
         this.chain.push(newBlock);
         return newBlock;
     }
+    getBlock (hash) {
+        for (let i = this.chain.length; i >= 0; i--) {
+            let thisBlock = this.chain[i];
+            if (thisBlock.hash === hash) {
+                return thisBlock;
+            }
+        }
+        return null;
+    }
     newTransaction (recipient, amount) {
         /*
         Adds a new transaction to the list of transactions
         */
         const transaction = this.primaryWallet.generateTransaction(recipient, amount);
-        this.queueTransaction(transaction);
+        this.transactionQueue.push(transaction);
+        return this.transactionQueue.length;
     };
     queueTransaction (transaction) {
         /*
-        Adds a transaction to the list of transactions
+        Adds an existing transaction to the list of transactions
         */
         this.transactionQueue.push(transaction);
         return this.transactionQueue.length;
@@ -226,6 +237,57 @@ class Blockchain {
         // return true if no problems found in the chain
         return true;
     }
+    validSideChain () {
+        return true;
+    }
+    foundCommonRoot (index, hash) {
+        return this.chain[index].previousHash === hash;
+    }
+    requestBlockFromPeer (hash, ip) {
+        const url = `${ip}/block/${hash}`;
+        return request(url);
+    }
+    useSideChain (sideChain, height) {
+        // dump any conflicting blocks
+        const newChain = this.chain.slice(0, height);
+        // add the sidechain blocks
+        for (let i = 0; i < sideChain.length; i++) {
+            newChain.push(sideChain[i]);
+        }
+        // update the chain
+        this.chain = newChain;
+    }
+    evaluateNewBlock (newBlock, peerIp) {
+        let commonRoot;
+        let blockToExamine = newBlock;
+        let sideChain = [];
+        let height = this.chain.length;
+        // find common root:
+        while (!this.foundCommonRoot(depth, blockToExamine)) {
+            sideChain.unshift(blockToExamine);
+            blockToExamine = this.requestBlockFromPeer(blockToExamine.previousHash, peerIp);
+        }
+        commonRoot = this.chain[height];
+        console.log('found a common root:', commonRoot);
+        // reject if provided block is part of a shorter chain
+        const sideChainLength = sideChain.length;
+        const depthOfCommonRoot = this.chain.length - height;
+        if (sideChainLength <= depthOfCommonRoot) {
+            console.log(`#rejecting block because sidechain is not longer than our chain`);
+            return false;
+        }
+        // evaluate the sidechain's validity
+        if (!this.validSideChain(sideChain)) {
+            console.log(`#rejecting block because sidechain is invalid`);
+            return false;
+        }
+        this.useSideChain(sideChain, height);
+        // restart the current mining operations,
+            // because they didn't have this most recent block
+        // return the new block
+        return true;
+
+    }
     returnNodeAddresses () {
         let nodes = this.nodes;
         let addresses = [];
@@ -299,26 +361,15 @@ class Blockchain {
         const newBlock = this.newBlock();
         return this.addBlock(newBlock);
     };
-    startMining (interval) {
-        console.log('starting mining');
-        this.miner = setInterval(this.mineBlock, interval * 1000);
-    };
-    stopMining () {
-        console.log('stopping mining');
-        clearInterval(this.miner);
-    };
-    syncChain () {
-        this.resolveConflicts()
-            .then(replaced => {
-                if (replaced) {
-                    return console.log('Our chain was replaced');
-                }
-                console.log('Our chain is authoritative');
-            })
-            .catch(error => {
-                console.log('error', error);
-            });
-    }
+
+    // startMining (interval) {
+    //     console.log('starting mining');
+    //     this.miner = setInterval(this.mineBlock, interval * 1000);
+    // };
+    // stopMining () {
+    //     console.log('stopping mining');
+    //     clearInterval(this.miner);
+    // };
 }
 
 module.exports = Blockchain;

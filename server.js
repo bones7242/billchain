@@ -61,16 +61,21 @@ app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
         return res.status(400).send('missing values');
     }
     // create a new transaction
-    const index = blockchain.newTransaction(body.recipient, body.amount);
-    // create response
-    const response = {message: `Transaction is number ${index} in the queue`};
+    const placeInQueue = blockchain.newTransaction(body.recipient, body.amount);
+    const response = {message: `Transaction is number ${placeInQueue} in the queue`};
     return res.status(201).json(response);
 });
 
 // receive a transaction, and add it to the transaction queue
 app.post('/transactions/queue', jsonBodyParser, ({ body }, res) => {
-    // receive a transaction from another node
-    // put that node in you queue of transactions
+    // receive a transaction (From a wallet. From another mining node?)
+    if (!body.transaction) {
+        return res.status(400).send('missing values');
+    }
+    // put that tx in you queue of transactions
+    const placeInQueue = blockchain.queueTransaction(body.transaction);
+    const response = {message: `Transaction is number ${placeInQueue} in the queue`};
+    return res.status(201).json(response);
 });
 
 // return the chain
@@ -121,6 +126,51 @@ app.get('/nodes/resolve', (req, res) => {
         .catch(error => {
             res.status(400).json(error.message);
         });
+});
+
+app.post('/block/new', ({ body }, res) => {
+    if (!body.block) {
+        return res.status(400).json({error: 'No block received'})
+    }
+    blockchain.evaluateNewBlock()
+        .then(accepted => {
+            let response;
+            if (accepted) {
+                response = {
+                    message: 'Your block was accepted',
+                    chain: blockchain.chain,
+                }
+            } else {
+                response = {
+                    message: 'Your block was rejected',
+                    chain: null,
+                }
+            }
+            return res.status(201).json(response);
+        })
+        .catch(error => {
+            res.status(400).json(error.message);
+        });
+});
+
+app.get('/block/:hash', ({ params }, res) => {
+    try {
+        let response;
+        const block = blockchain.getBlock(params.hash);
+        if (block) {
+            response = {
+                message: 'Block found',
+                block: block,
+            };
+        } else {
+            response = {
+                message: 'No block found with that hash',
+            }
+        }
+        res.status(400).json(response);
+    } catch (error) {
+        res.status(400).json(error.message);
+    }
 });
 
 app.get('/wallet/primary', (req, res) => {
