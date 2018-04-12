@@ -39,7 +39,7 @@ const checkStatus = (response) => {
  * @return {object}           The response data
  */
 module.exports = (url, options) => {
-  return fetch.fetchUrl(url, options)
+  return fetch(url, options)
     .then(checkStatus)
     .then(parseJSON);
 };

@@ -10,7 +10,7 @@ const PORT = parseInt(process.argv[2]) || 3000;
 //instantiate the node
 const app = express();
 
-// Generate a globally unique address for this node
+// Generate an id for this node
 nodeIdentifier = randomId('xNAx', 40);
 
 require('./utils/checkCryptoSupport.js');
@@ -19,7 +19,6 @@ require('./utils/checkCryptoSupport.js');
 const blockchain = new Blockchain();
 
 // add routes
-
 app.get('/details', (req, res) => {
     const response = {
         message: `details for node ${nodeIdentifier}`,
@@ -39,22 +38,17 @@ app.get('/details', (req, res) => {
     }
     return res.status(201).json(response);
 });
-
-// mine the current block
 app.get('/mine/start/:interval', (req, res) => {
     const interval = parseInt(req.params.interval); // tbd: take this from a param
     blockchain.startMining(interval);
     const response = {message: `Your miner is now mining every ${interval} seconds.`};
     res.status(200).json(response);
 });
-
 app.get('/mine/stop', (req, res) => {
     blockchain.stopMining();
     const response = {message: `Your miner has successfully stopped`};
     res.status(200).json(response);
 });
-
-// create a new transaction and add it to the que
 app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
     // check that the required fields are in the post'ed data
     if (!body.recipient || !body.amount) {
@@ -65,8 +59,6 @@ app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
     const response = {message: `Transaction is number ${placeInQueue} in the queue`};
     return res.status(201).json(response);
 });
-
-// receive a transaction, and add it to the transaction queue
 app.post('/transactions/queue', jsonBodyParser, ({ body }, res) => {
     // receive a transaction (From a wallet. From another mining node?)
     if (!body.transaction) {
@@ -77,8 +69,6 @@ app.post('/transactions/queue', jsonBodyParser, ({ body }, res) => {
     const response = {message: `Transaction is number ${placeInQueue} in the queue`};
     return res.status(201).json(response);
 });
-
-// return the chain
 app.get('/chain', (req, res) => {
     const response = {
         chain: blockchain.chain,
@@ -86,8 +76,6 @@ app.get('/chain', (req, res) => {
     };
     return res.json(response);
 });
-
-// register a new node
 app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
     // accept a list of new nodes in the form of URLs
     const nodeList = body.nodes;
@@ -103,8 +91,6 @@ app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
     }
     return res.status(201).json(response);
 });
-
-// check with other nodes to sync chains
 app.get('/nodes/resolve', (req, res) => {
     // implement Consensus Algorithm, which resolves any conflicts,
     // to ensure a node has the correct chain
@@ -127,13 +113,15 @@ app.get('/nodes/resolve', (req, res) => {
             res.status(400).json(error.message);
         });
 });
-
-app.post('/block/new', ({ body }, res) => {
-    if (!body.block) {
+app.post('/block/new', jsonBodyParser, ({ body, ip }, res) => {
+    console.log('post to /block/new/')
+    if (!body || !body.block) {
+        console.log('no block received');
         return res.status(400).json({error: 'No block received'})
     }
-    blockchain.evaluateNewBlock()
+    blockchain.evaluateNewBlock(body.block, ip)
         .then(accepted => {
+            console.log('completed evaluating new block');
             let response;
             if (accepted) {
                 response = {
@@ -152,19 +140,22 @@ app.post('/block/new', ({ body }, res) => {
             res.status(400).json(error.message);
         });
 });
-
 app.get('/block/:hash', ({ params }, res) => {
+    console.log(`request on /block/${params.hash}`);
     try {
         let response;
-        const block = blockchain.getBlock(params.hash);
+        const [block, index ] = blockchain.getBlock(params.hash);
         if (block) {
             response = {
                 message: 'Block found',
-                block: block,
+                block,
+                index,
             };
         } else {
             response = {
                 message: 'No block found with that hash',
+                block: false,
+                index: false,
             }
         }
         res.status(400).json(response);
@@ -172,7 +163,6 @@ app.get('/block/:hash', ({ params }, res) => {
         res.status(400).json(error.message);
     }
 });
-
 app.get('/wallet/primary', (req, res) => {
     const response = {
         message: `primary wallet on node ${nodeIdentifier}`,
@@ -183,7 +173,6 @@ app.get('/wallet/primary', (req, res) => {
     };
     return res.status(201).json(response);
 });
-
 app.get('/wallet/coinbase', (req, res) => {
     const response = {
         message: `coinbase wallet on node ${nodeIdentifier}`,
@@ -195,7 +184,7 @@ app.get('/wallet/coinbase', (req, res) => {
     return res.status(201).json(response);
 });
 
-
+// start the server
 app.listen(PORT, () => {
     console.log(`\nBlockchain node listening on port ${PORT}!`)
 });

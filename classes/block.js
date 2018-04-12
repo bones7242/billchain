@@ -44,7 +44,6 @@ class Block {
 
         }
         console.log('\nBlock Mined! Hash =', this.hash.substring(0,6));
-        console.log(this);
     }
     addTransaction (transaction) {
         // process transaction and check if valid,
