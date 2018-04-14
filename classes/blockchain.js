@@ -6,6 +6,7 @@ const BlockToVerify = require('./blockToVerify.js');
 const TransactionOutput = require('./transactionOutput.js');
 const Transaction = require('./transaction.js');
 const TransactionToVerify = require('./transactionToVerify.js');
+const searchChainForPreviousHash = require('../functions/searchChainForPreviousHash');
 const getDifficultyString = require('../utils/getDifficultyString.js');
 
 // declare Blockchain class
@@ -103,6 +104,7 @@ class Blockchain {
     addBlock (newBlock) {
         newBlock.mineBlock(this.difficulty);
         this.chain.push(newBlock);
+        console.log('new block:', newBlock);
         return newBlock;
     }
     getBlock (hash) {
@@ -143,98 +145,98 @@ class Blockchain {
          */
         this.nodes[address] = address;
     }
-    // validChain (chain) {
-    //     /*
-    //     Determine if a given blockchain is valid
-    //
-    //     :param chain: <list> A blockchain
-    //     :return: <bool> True if valid, False if not
-    //      */
-    //     const target = getDifficultyString(this.difficulty);
-    //     let previousBlock = chain[0];
-    //     let currentIndex = 1;
-    //     let tempUTXOs = {};
-    //
-    //     tempUTXOs[this.genesisTransactionOutput.id] = this.genesisTransactionOutput;  // hard code this with the genesis block txo
-    //
-    //     // verify that the genesis bocks are the same
-    //     if (previousBlock.hash !== this.chain[0].hash) {
-    //         console.log(`#Genesis blocks are not the same`);
-    //         return false;
-    //     }
-    //
-    //     // check the chain, and return false if any problems
-    //     while (currentIndex < chain.length) {
-    //         const currentBlock = new BlockToVerify(chain[currentIndex]);
-    //         // compare registered hash and calculated hash
-    //         if (currentBlock.hash !== currentBlock.calculateHash()) {
-    //             console.log('#Current hashes are not equal');
-    //             return false;
-    //         }
-    //         // compare previous hash and registered previous hash
-    //         if (previousBlock.hash !== currentBlock.previousHash) {
-    //             console.log('#previous Hashes not equal');
-    //             return false;
-    //         }
-    //         // check if hash is solved
-    //         if (currentBlock.hash.substring(0, this.difficulty) !== target) {
-    //             console.log('#This block has not been mined');
-    //             return false;
-    //         }
-    //         // check the block's transactions
-    //         let tempOutput;
-    //         for (let i = 0; i < currentBlock.transactions.length; i++) {
-    //             const currentTransaction = new TransactionToVerify(currentBlock.transactions[i]);
-    //             // verify the tx signature
-    //             if(!currentTransaction.verifySignature()) {
-    //                 console.log(`#Signature on transaction[${i}] is invalid`);
-    //                 return false;
-    //             }
-    //             // verify the inputs equal the outputs
-    //             if(currentTransaction.getInputsValue() !== currentTransaction.getOutputsValue()) {
-    //                 console.log(`#Inputs are not equal to outputs on transaction[${i}]`);
-    //                 return false;
-    //             }
-    //             // check all the inputs
-    //             for (let key in currentTransaction.inputs) {
-    //                 if (currentTransaction.inputs.hasOwnProperty(key)) {
-    //                     const thisInput = currentTransaction.inputs[key];
-    //                     tempOutput = tempUTXOs[thisInput.transactionOutputId];
-    //                     //
-    //                     if (!tempOutput) {
-    //                         console.log(`#Referenced input on transaction[${i}] is missing`);
-    //                         return false;
-    //                     }
-    //                     //
-    //                     if (thisInput.UTXO.amount !== tempOutput.amount) {
-    //                         console.log(`#Referenced input on transaction[${i}] has invalid amount`);
-    //                         return false;
-    //                     }
-    //                     delete tempUTXOs[thisInput.transactionOutputId];
-    //                 }
-    //             }
-    //             // add the outputs to temp outputs
-    //             for (let j = 0; j < currentTransaction.outputs.length; j++) {
-    //                const thisOutput = currentTransaction.outputs[j];
-    //                tempUTXOs[thisOutput.id] = thisOutput;
-    //             }
-    //             //
-    //             if (currentTransaction.outputs[0].recipient !== currentTransaction.recipient) {
-    //                 console.log(`#Transaction[${i}] output recipient isnot who it should be`);
-    //                 return false;
-    //             }
-    //             if (currentTransaction.outputs[1].recipient !== currentTransaction.sender) {
-    //                 console.log(`#Transaction[${i}] output 'change' address is not sender`);
-    //                 return false;
-    //             }
-    //         }
-    //         // check the next block
-    //         previousBlock = currentBlock;
-    //         currentIndex += 1;
-    //     }
-    //     // return true if no problems found in the chain
-    //     return true;
-    // }
+    validChain (chain) {
+        /*
+        Determine if a given blockchain is valid
+
+        :param chain: <list> A blockchain
+        :return: <bool> True if valid, False if not
+         */
+        const target = getDifficultyString(this.difficulty);
+        let previousBlock = chain[0];
+        let currentIndex = 1;
+        let tempUTXOs = {};
+
+        tempUTXOs[this.genesisTransactionOutput.id] = this.genesisTransactionOutput;  // hard code this with the genesis block txo
+
+        // verify that the genesis bocks are the same
+        if (previousBlock.hash !== this.chain[0].hash) {
+            console.log(`#Genesis blocks are not the same`);
+            return false;
+        }
+
+        // check the chain, and return false if any problems
+        while (currentIndex < chain.length) {
+            const currentBlock = new BlockToVerify(chain[currentIndex]);
+            // compare registered hash and calculated hash
+            if (currentBlock.hash !== currentBlock.calculateHash()) {
+                console.log('#Current hashes are not equal');
+                return false;
+            }
+            // compare previous hash and registered previous hash
+            if (previousBlock.hash !== currentBlock.previousHash) {
+                console.log('#previous Hashes not equal');
+                return false;
+            }
+            // check if hash is solved
+            if (currentBlock.hash.substring(0, this.difficulty) !== target) {
+                console.log('#This block has not been mined');
+                return false;
+            }
+            // check the block's transactions
+            let tempOutput;
+            for (let i = 0; i < currentBlock.transactions.length; i++) {
+                const currentTransaction = new TransactionToVerify(currentBlock.transactions[i]);
+                // verify the tx signature
+                if(!currentTransaction.verifySignature()) {
+                    console.log(`#Signature on transaction[${i}] is invalid`);
+                    return false;
+                }
+                // verify the inputs equal the outputs
+                if(currentTransaction.getInputsValue() !== currentTransaction.getOutputsValue()) {
+                    console.log(`#Inputs are not equal to outputs on transaction[${i}]`);
+                    return false;
+                }
+                // check all the inputs
+                for (let key in currentTransaction.inputs) {
+                    if (currentTransaction.inputs.hasOwnProperty(key)) {
+                        const thisInput = currentTransaction.inputs[key];
+                        tempOutput = tempUTXOs[thisInput.transactionOutputId];
+                        //
+                        if (!tempOutput) {
+                            console.log(`#Referenced input on transaction[${i}] is missing`);
+                            return false;
+                        }
+                        //
+                        if (thisInput.UTXO.amount !== tempOutput.amount) {
+                            console.log(`#Referenced input on transaction[${i}] has invalid amount`);
+                            return false;
+                        }
+                        delete tempUTXOs[thisInput.transactionOutputId];
+                    }
+                }
+                // add the outputs to temp outputs
+                for (let j = 0; j < currentTransaction.outputs.length; j++) {
+                   const thisOutput = currentTransaction.outputs[j];
+                   tempUTXOs[thisOutput.id] = thisOutput;
+                }
+                //
+                if (currentTransaction.outputs[0].recipient !== currentTransaction.recipient) {
+                    console.log(`#Transaction[${i}] output recipient isnot who it should be`);
+                    return false;
+                }
+                if (currentTransaction.outputs[1].recipient !== currentTransaction.sender) {
+                    console.log(`#Transaction[${i}] output 'change' address is not sender`);
+                    return false;
+                }
+            }
+            // check the next block
+            previousBlock = currentBlock;
+            currentIndex += 1;
+        }
+        // return true if no problems found in the chain
+        return true;
+    }
     static validSideChain () {
         return true;
     }
@@ -261,17 +263,6 @@ class Blockchain {
         // update the chain
         this.chain = newChain;
     }
-    searchChainForBlock (hash) {
-        console.log('searching block for hash:', hash);
-        for (let i = this.chain.length - 1; i >= 0; i--) {
-            console.log('i:', i);
-            let thisBlock = this.chain[i];
-            if (thisBlock.hash === hash) {
-                return i;
-            }
-        }
-        return null;
-    }
     findCommonRoot (block, peerAddress) {
         console.log('finding common root...');
         let currentBlock, commonRoot, index, sideChain;
@@ -279,7 +270,7 @@ class Blockchain {
         sideChain = [];
         while (!index || (currentBlock.previousHash !== '0')) {
             // check the chain for the preceding block
-            const index = this.searchChainForBlock(currentBlock.previousHash);
+            const index = searchChainForPreviousHash(this.chain, currentBlock);
             // if no index found yet
             if (!index) {
                 // store this block in sidechain array
@@ -352,71 +343,11 @@ class Blockchain {
         };
         return addresses;
     }
-    // resolveConflicts () {
-    //     /*
-    //     This is our Consensus Algorithm, it resolves conflicts
-    //     by replacing our chain with the longest one in the network.
-    //
-    //     :return: <bool> True if our chain was replaced, False if not
-    //      */
-    //     return new Promise((resolve, reject) => {
-    //         const neighborNodes = this.returnNodeAddresses();
-    //         let newChain = null;
-    //         // we're only looking for chains longer than ours
-    //         let maxLength = this.chain.length;
-    //         // get each node's chain
-    //         const that = this;
-    //         const promises = neighborNodes.map((node) => {
-    //             return new Promise((resolve, reject) => {
-    //                 axios.get(`${node}/chain`)
-    //                     .then((response)=> {
-    //                         resolve(response)
-    //                     })
-    //                     .catch(error => {
-    //                         resolve(`error with node ${node}: ${error.message}`);
-    //                     });
-    //             })
-    //         });
-    //         // verify all the chains
-    //         Promise.all(promises)
-    //             .then(responsesArray => {
-    //                 // check each response
-    //                 responsesArray.forEach((response => {
-    //                     if (response.status === 200) {
-    //                         const length = response.data.length;
-    //                         const chain = response.data.chain;
-    //                         if (length > maxLength && that.validChain(chain)) {
-    //                             maxLength = length;
-    //                             newChain = chain;
-    //                         }
-    //                     } else if (response.status) {
-    //                         console.log(`response returned with status ${response.status}`);
-    //                     } else {
-    //                         console.log('response:', response);
-    //                     };
-    //                 }))
-    //             })
-    //             .then(() => {
-    //                 console.log('done checking node responses');
-    //                 // replace our chain if we discovered a new, valid chain that is longer than ours
-    //                 if (newChain) {
-    //                     this.chain = newChain;
-    //                     return resolve(true);
-    //                 }
-    //                 resolve(false);
-    //             })
-    //             .catch(error => {
-    //                 console.log('error in node check promises', error);
-    //                 reject(error);
-    //             });
-    //     })
-    // };
     mineBlock () {
         const newBlock = this.newBlock();
         const minedBlock = this.addBlock(newBlock);
         this.broadcastBlock(minedBlock);
     };
-
     startMining (interval) {
         console.log('\nstarting mining');
         this.miner = setInterval(this.mineBlock, interval * 1000);

@@ -4,7 +4,8 @@
   "description": "a javascript implementation of a blockchain",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -23,5 +24,8 @@
     "elliptic": "^6.4.0",
     "express": "^4.16.2",
     "fetch": "^1.1.0"
+  },
+  "devDependencies": {
+    "jest": "^22.4.3"
   }
 }
