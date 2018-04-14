@@ -277,7 +277,7 @@ class Blockchain {
         let currentBlock, commonRoot, index, sideChain;
         currentBlock = block;
         sideChain = [];
-        while (!index && (currentBlock.previousHash !== 0)) {
+        while (!index || (currentBlock.previousHash !== '0')) {
             // check the chain for the preceding block
             const index = this.searchChainForBlock(currentBlock.previousHash);
             // if no index found yet
