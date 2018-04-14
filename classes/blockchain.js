@@ -7,6 +7,7 @@ const TransactionOutput = require('./transactionOutput.js');
 const Transaction = require('./transaction.js');
 const TransactionToVerify = require('./transactionToVerify.js');
 const searchChainForPreviousHash = require('../functions/searchChainForPreviousHash');
+const createChainWithSideChain = require('../functions/createChainWithSideChain');
 const getDifficultyString = require('../utils/getDifficultyString.js');
 
 // declare Blockchain class
@@ -104,7 +105,7 @@ class Blockchain {
     addBlock (newBlock) {
         newBlock.mineBlock(this.difficulty);
         this.chain.push(newBlock);
-        console.log('new block:', newBlock);
+        // console.log('new block:', newBlock);
         return newBlock;
     }
     getBlock (hash) {
@@ -252,17 +253,6 @@ class Blockchain {
                 console.log(error.message);
             });
     }
-    useSideChain (sideChain, height) {
-        console.log('using side chain...')
-        // dump any conflicting blocks
-        const newChain = this.chain.slice(0, height);
-        // add the sidechain blocks
-        for (let i = 0; i < sideChain.length; i++) {
-            newChain.push(sideChain[i]);
-        }
-        // update the chain
-        this.chain = newChain;
-    }
     findCommonRoot (block, peerAddress) {
         console.log('finding common root...');
         let currentBlock, commonRoot, index, sideChain;
@@ -305,7 +295,7 @@ class Blockchain {
             return false;
         }
         console.log('using side chain...');
-        this.useSideChain(sideChain, index);
+        this.chain = createChainWithSideChain(sideChain, index);
         console.log('side chain used.');
         // restart the current mining operations,
             // because they didn't have this most recent block
