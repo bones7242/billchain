@@ -2,6 +2,9 @@ const crypto = require('crypto');
 const hashSeed = 'billbitt';
 
 module.exports = (transactionsArray) => {
+    if (!transactionsArray) {
+        transactionsArray = [];
+    }
     let count = transactionsArray.length;
     let previousTreeLayer = [];
     transactionsArray.forEach(transaction => {

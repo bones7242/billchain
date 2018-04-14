@@ -1,4 +1,4 @@
-const searchChainForPreviousHash = (chain, { previousHash }) => {
+module.exports = (chain, { previousHash }) => {
     // console.log('searching chain for block with hash:', previousHash);
     for (let i = chain.length - 1; i >= 0; i--) {
         let thisBlock = chain[i];
@@ -8,5 +8,3 @@ const searchChainForPreviousHash = (chain, { previousHash }) => {
     }
     return null;
 };
-
-module.exports = searchChainForPreviousHash;

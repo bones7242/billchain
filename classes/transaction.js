@@ -7,7 +7,7 @@ const TransactionOutput = require('./transactionOutput.js');
 
 class Transaction {
     constructor (sender, recipient, amount, inputs) {
-        console.log('\ncreating a transaction...');
+        // console.log('\ncreating a transaction...');
         this.sender = sender;
         this.recipient = recipient;
         this.amount = amount;
