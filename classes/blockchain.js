@@ -10,7 +10,6 @@ const searchChainForPreviousHash = require('../functions/searchChainForPreviousH
 const createChainWithSideChain = require('../functions/createChainWithSideChain');
 const getDifficultyString = require('../utils/getDifficultyString.js');
 
-// declare Blockchain class
 class Blockchain {
     constructor() {
         this.chain = [];
@@ -243,6 +242,9 @@ class Blockchain {
     }
     async requestBlockFromPeer (hash, ip) {
         console.log('previous block requested from peer');
+        /*
+        return: a block object, or false
+        */
         const url = `${ip}/block/${hash}`;
         await axios.get(url)
             .then(response => {
@@ -255,22 +257,30 @@ class Blockchain {
     }
     findCommonRoot (block, peerAddress) {
         console.log('finding common root...');
-        let currentBlock, commonRoot, index, sideChain;
+        let currentBlock, index, sideChain;
+        index = -1;
         currentBlock = block;
         sideChain = [];
-        while (!index || (currentBlock.previousHash !== '0')) {
+        // check for a common root
+        // for each block given, check all the way back untill you hit the origin
+        // do this until there are no more new blocks or an index above zero is found
+        while (currentBlock.previousHash && index <= 0) {
             // check the chain for the preceding block
-            const index = searchChainForPreviousHash(this.chain, currentBlock);
-            // if no index found yet
-            if (!index) {
-                // store this block in sidechain array
-                sideChain.unshift(currentBlock);
-                // and get a new block
-                currentBlock = this.requestBlockFromPeer(currentBlock.previousHash, peerAddress);
-            }
+            index = searchChainForPreviousHash(this.chain, currentBlock);
+            console.log(`index of previous hash ${currentBlock.previousHash} in our chain:`, index);
+            // store this block in sidechain array
+            sideChain.unshift(currentBlock);
+            console.log('sidechain:', sideChain);
+            // and get a new block
+            currentBlock = this.requestBlockFromPeer(currentBlock.previousHash, peerAddress);
+            console.log('new block from peer:', currentBlock.hash);
         }
-        commonRoot = this.chain[index];
-        console.log('found a common root:', commonRoot.hash);
+        // check to see if we went through the whole competing chain without finding the same genesis block
+        if (!currentBlock && index < 0) {
+            console.log('warning: this chain does not have same genesis block');
+            return [-1, null];
+        }
+        console.log('found a common root:', this.chain[index].hash);
         return [ index, sideChain ];
     }
     evaluateNewBlock (newBlock, peerAddress) {
@@ -278,6 +288,10 @@ class Blockchain {
         console.log('from peer:', peerAddress);
         // find common root
         const [index, sideChain] = this.findCommonRoot(newBlock);
+        if (index < 0) {
+            console.log('#rejecting malicious chain');
+            return false;
+        }
         // reject if provided block is part of a shorter chain
         console.log('evaluating amount of work...');
         const sideChainLength = sideChain.length;

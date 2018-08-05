@@ -10,6 +10,6 @@ test('should find previous hash at index 2', () => {
 test('should find previous hash at index 0 (genesis)', () => {
     expect(searchChainForPreviousHash(testChain, blockOne)).toBe(0);
 });
-test('should return null if no block with previous hash found', () => {
+test('should return -1 if no block with previous hash found', () => {
     expect(searchChainForPreviousHash(testChain, fakeBlock)).toBe(null);
 });
