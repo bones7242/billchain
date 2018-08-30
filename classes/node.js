@@ -20,8 +20,6 @@ class Node {
         };
         this.UTXOs = {};
         this.minimumTransaction = 1;
-        this.miner = null;
-        this.isMining = false;
         // bind functions
         this.getChainUtxos = this.getChainUtxos.bind(this);
         this.removeChainUtxo = this.removeChainUtxo.bind(this);
@@ -31,8 +29,9 @@ class Node {
         this.coinbase = new Wallet(this.getChainUtxos);
         // create another wallets
         this.primaryWallet = new Wallet(this.getChainUtxos);
-        // generate first 'genesis' block
-        this.createGenesisBlock();
+        // generate first 'genesis' block & add it to the chain
+        const genesisBlock = this.createGenesisBlock();
+        this.addBlock(genesisBlock);
     }
     getChainUtxos () {
         return this.UTXOs;
@@ -81,7 +80,8 @@ class Node {
         genesisBlock['timestamp'] = new Date('January 13, 1986');
         genesisBlock.addTransactionToBlock(genesisTransaction);
         genesisBlock.mineBlock(3);
-        this.addBlock(genesisBlock.getBlockInfo());
+
+        return genesisBlock.getBlockInfo();
 
     }
     getBlock (hash) {
@@ -315,6 +315,8 @@ class Node {
         );
 
         // tbd: add a coinbase transaction
+
+        
 
         // add up to 9 other transactions from the queue to the block
         while (this.transactionQueue.length !== 0 && newBlock.transactions.length <= 10) {
