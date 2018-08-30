@@ -1,25 +1,25 @@
-// //testing
-// const blockchain = new Blockchain();
-//
-// const block1 = new Block(blockchain.lastBlock().hash, this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
-// console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
-// console.log("\nWalletA is Attempting to send funds (40) to WalletB...");
-// block1.addTransaction(this.walletA.generateTransaction(this.walletB.publicKey, 40));
-// this.addBlock(block1);
-// console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
-// console.log("WalletB's balance is: " + this.walletB.getBalanceAndUpdateWalletUTXOs());
-//
-// const block2 = new Block(this.lastBlock().hash, this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
-// console.log("\nWalletA Attempting to send more funds (1000) than it has...");
-// block2.addTransaction(this.walletA.generateTransaction(this.walletB.publicKey, 1000));
-// this.addBlock(block2);
-// console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
-// console.log("WalletB's balance is: " + this.walletB.getBalanceAndUpdateWalletUTXOs());
-//
-// const block3 = new Block(this.lastBlock().hash, this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
-// console.log("\nWalletB is Attempting to send funds (20) to WalletA...");
-// block3.addTransaction(this.walletB.generateTransaction(this.walletA.publicKey, 20));
-// console.log("\nWalletA's balance is: " + this.walletA.getBalanceAndUpdateWalletUTXOs());
-// console.log("WalletB's balance is: " + this.walletB.getBalanceAndUpdateWalletUTXOs());
-//
-// console.log('\nis this chain valid?', this.validChain(this.chain));
+ //testing
+ const blockchain = new blockchain();
+
+ const block1 = new block(blockchain.lastblock().hash, this.removechainutxo, this.addchainutxo, this.minimumtransaction, this.getchainutxos);
+ console.log("\nwalleta's balance is: " + this.walleta.getbalanceandupdatewalletutxos());
+ console.log("\nwalleta is attempting to send funds (40) to walletb...");
+ block1.addtransaction(this.walleta.generatetransaction(this.walletb.publickey, 40));
+ this.addblock(block1);
+ console.log("\nwalleta's balance is: " + this.walleta.getbalanceandupdatewalletutxos());
+ console.log("walletb's balance is: " + this.walletb.getbalanceandupdatewalletutxos());
+
+ const block2 = new block(this.lastblock().hash, this.removechainutxo, this.addchainutxo, this.minimumtransaction, this.getchainutxos);
+ console.log("\nwalleta attempting to send more funds (1000) than it has...");
+ block2.addtransaction(this.walleta.generatetransaction(this.walletb.publickey, 1000));
+ this.addblock(block2);
+ console.log("\nwalleta's balance is: " + this.walleta.getbalanceandupdatewalletutxos());
+ console.log("walletb's balance is: " + this.walletb.getbalanceandupdatewalletutxos());
+
+ const block3 = new block(this.lastblock().hash, this.removechainutxo, this.addchainutxo, this.minimumtransaction, this.getchainutxos);
+ console.log("\nwalletb is attempting to send funds (20) to walleta...");
+ block3.addtransaction(this.walletb.generatetransaction(this.walleta.publickey, 20));
+ console.log("\nwalleta's balance is: " + this.walleta.getbalanceandupdatewalletutxos());
+ console.log("walletb's balance is: " + this.walletb.getbalanceandupdatewalletutxos());
+
+ console.log('\nis this chain valid?', this.validchain(this.chain));
