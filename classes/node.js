@@ -348,8 +348,7 @@ class Node {
                 }
             })
                 .then(response => {
-                    console.log(`response from ${node}:`);
-                    // console.log(response);
+                    console.log(`successfully sent to ${node}.`);
                 })
                 .catch(error => {
                     console.log('error:', error.message);
