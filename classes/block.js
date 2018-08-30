@@ -38,9 +38,7 @@ class Block {
         this.merkleRoot = getMerkleRoot(this.transactions);
         const target = getDifficultyString(difficulty);
         this.hash = this.calculateHash();
-        console.log('target:', this.target);
-        console.log('nonce:', this.nonce);
-        console.log('hash:', this.hash);
+        console.log('target:', target);
         while (!(this.hash.substring(0, difficulty) === target)) {
             this.nonce++;
             //console.log('nonce:', this.nonce);
