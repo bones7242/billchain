@@ -30,21 +30,26 @@ class Wallet {
         const pubPoint = key.getPublic();
         this.publicKey = pubPoint.encode('hex');
     }
-    getBalanceAndUpdateWalletUTXOs () {
+    getBalance() {
+        /* 
+         updates the UTXOs stored in this wallet at this.UTXOs
+         returns balance
+        */
+        let totalBalance = 0;
+        // get all the utxos from the whole chain
         const chainUtxos = this.getChainUtxos();
-        // returns balance and stores the UTXOs owned by this wallet in this.UTXOs
-        let total = 0;
+        // look at al the utxos from the whole chain
         for (let key in chainUtxos) {
             if (chainUtxos.hasOwnProperty(key)) {
                 const UTXO = chainUtxos[key];
-                // if output belongs to me, add it to the wallet's list of unspent outputs
+                // if a utxo belongs to me, add it to this wallet's list of unspent outputs
                 if (UTXO.isMine(this.publicKey)) {
                     this.UTXOs[key] = UTXO;
-                    total += UTXO.amount;
+                    totalBalance += UTXO.amount;
                 }
             }
         };
-        return total;
+        return totalBalance;
 
     }
     generateTransaction (recipient, amount) {

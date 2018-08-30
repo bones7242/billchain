@@ -10,9 +10,9 @@ class Block {
         this.hash = null;
         this.previousHash = null;
         this.merkleRoot = null;
-        this.transactions = [];
-        this.timestamp = null;
         this.nonce = null;
+        this.timestamp = null;
+        this.transactions = [];
         // info/methods passed from the blockchain class
         this.removeChainUtxo = removeChainUtxo;
         this.addChainUtxo = addChainUtxo;
@@ -28,9 +28,9 @@ class Block {
         return crypto.createHmac('sha256', hashSeed)
             .update(
                 this.previousHash +
-                this.timestamp +
+                this.merkleRoot +
                 this.nonce +
-                this.merkleRoot
+                this.timestamp
             )
             .digest('hex');
     }
@@ -38,14 +38,29 @@ class Block {
         this.merkleRoot = getMerkleRoot(this.transactions);
         const target = getDifficultyString(difficulty);
         this.hash = this.calculateHash();
+        console.log('target:', this.target);
+        console.log('nonce:', this.nonce);
+        console.log('hash:', this.hash);
         while (!(this.hash.substring(0, difficulty) === target)) {
             this.nonce++;
+            //console.log('nonce:', this.nonce);
             this.hash = this.calculateHash();
+            // console.log('hash:', this.hash);
 
         }
-        console.log('\nBlock Mined! Hash =', this.hash.substring(0,6));
+        console.log('\nBlock Mined! Hash =', this.hash.substring(0, 6));
     }
-    addTransaction (transaction) {
+    getBlockInfo () {
+        return {
+            hash        : this.hash,
+            previousHash: this.previousHash,
+            merkelRoot  : this.merkleRoot,
+            nonce       : this.nonce,
+            timestamp   : this.timestamp,
+            transactions: this.transactions
+        }
+    }
+    addTransactionToBlock (transaction) {
         // process transaction and check if valid,
         // unless block is genesis block then ignore.
         if (!transaction) {
