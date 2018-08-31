@@ -2,7 +2,6 @@
 const axios = require('axios');
 const Wallet = require('./wallet.js');
 const Block = require('./block.js');
-const BlockToVerify = require('./blockToVerify.js');
 const TransactionOutput = require('./transactionOutput.js');
 const Transaction = require('./transaction.js');
 const TransactionToVerify = require('./transactionToVerify.js');
@@ -14,7 +13,7 @@ class Node {
         this.transactionQueue = [];
         this.blockRewardAmount = 13;
         this.difficulty = 3;
-        this.nodes = {
+        this.peers = {
             'http://localhost:4000': 'http://localhost:4000', // note: hard coded nodes
         };
         this.UTXOs = {};
@@ -26,14 +25,13 @@ class Node {
         this.removeChainUtxo = this.removeChainUtxo.bind(this);
         this.addChainUtxo = this.addChainUtxo.bind(this);
         this.mine = this.mine.bind(this);
-        // create coinbase wallet
+        // create node wallets
+        this.genesisWallet = new Wallet(null, '2a185918d040455f3fe7e25b322328011e9a31c874f674d53931a4449e7b7239');
         this.coinbase = new Wallet(null, '4a65851d7639eb284da1fa83e24a2398288d6ab6d1c9d8d7d6b611fc76aa305f');
-
-        // create another wallets
         this.primaryWallet = new Wallet(this.getChainUtxos);
         // generate first 'genesis' block & add it to the chain
-        const genesisBlock = this.createGenesisBlock();
-        this.addBlock(genesisBlock);
+        this.genesisBlock = this.createGenesisBlock();
+        this.addBlock(this.genesisBlock);
     }
     setAddress (address) {
         this.address = address;
@@ -51,17 +49,17 @@ class Node {
         this.UTXOs[transactionOutput.id] = transactionOutput;
     }
     // blocks
-    createGenesisBlock () {
-        console.log('\ncreating genesis transaction...');
-        // create genesis wallets
-        const genesisWallet = new Wallet(null, '2a185918d040455f3fe7e25b322328011e9a31c874f674d53931a4449e7b7239');
+    createGenesisBlock() {
 
+        console.log('\ncreating genesis transaction...'); 
+        const genesisTimeStamp = new Date('January 13, 1986');
         // create genesis transaction
         let genesisTransaction = new Transaction(
             this.coinbase.publicKey,
-            genesisWallet.publicKey,
+            this.genesisWallet.publicKey,
             10,
-            null
+            null,
+            genesisTimeStamp,
         );
 
         //manually sign the genesis transaction
@@ -71,21 +69,29 @@ class Node {
         const genesisTransactionOutput = new TransactionOutput(
             genesisTransaction.recipient,
             genesisTransaction.amount,
-            genesisTransaction.txid
+            genesisTransaction.txid,
+            genesisTimeStamp,
         );
         genesisTransaction.outputs[0]= genesisTransactionOutput;
 
         // store the UTXO in the UTXOs list
         this.UTXOs[genesisTransactionOutput.id]= genesisTransactionOutput;
 
-        // store the genesis transaction
+        // store the genesis transaction UTXO
         this.genesisTransactionOutput = genesisTransactionOutput;
 
         // create genesis block
         console.log('\ncreating and mining genesis block...');
-        const genesisBlock = new Block('0', this.removeChainUtxo, this.addChainUtxo, null, null);
-        genesisBlock['timestamp'] = new Date('January 13, 1986');
-        genesisBlock.addTransactionToBlock(genesisTransaction);
+        const genesisBlock = new Block(
+            { 
+                previousHash: '0',
+                timestamp: genesisTimeStamp,
+            },
+            this.removeChainUtxo,
+            this.addChainUtxo,
+            this.minimumTransaction,
+            this.getChainUtxos);
+        genesisBlock.addTransaction(genesisTransaction);
         genesisBlock.mineBlock(3);
 
         return genesisBlock.getBlockInfo();
@@ -119,21 +125,21 @@ class Node {
         return this.transactionQueue.length;
     };
     // networking
-    registerNode (address) {
+    registerPeer (address) {
         /*
-        Add a new node to the list of nodes
+        Add a new node to the list of peers
 
         :param address: <str> Address of node. Eg. 'http://192.168.0.5:5000'
         :return: None
          */
-        this.nodes[address] = address;
+        this.peers[address] = address;
     }
-    returnNodeAddresses() {
-        let nodes = this.nodes;
+    returnPeerAddressArray() {
+        let peers = this.peers;
         let addresses = [];
-        for (let key in nodes) {
-            if (nodes.hasOwnProperty(key)) {
-                addresses.push(nodes[key]);
+        for (let key in peers) {
+            if (peers.hasOwnProperty(key)) {
+                addresses.push(peers[key]);
             }
         };
         return addresses;
@@ -151,17 +157,24 @@ class Node {
         let currentIndex = 1;
         let tempUTXOs = {};
 
-        tempUTXOs[this.genesisTransactionOutput.id] = this.genesisTransactionOutput;  // hard code this with the genesis block txo
+        // start with hard coded genesis block utxo
+        tempUTXOs[this.genesisBlock.transactions[0].outputs[0].id] = this.genesisBlock.transactions[0].outputs[0];
 
         // verify that the genesis bocks are the same
-        if (previousBlock.hash !== this.chain[0].hash) {
+        if (previousBlock.hash !== this.genesisBlock.hash) {
             console.log(`#Genesis blocks are not the same`);
             return [false, null];
         }
 
         // check the chain, and return false if any problems
         while (currentIndex < chain.length) {
-            const currentBlock = new BlockToVerify(chain[currentIndex]);
+            const currentBlock = new Block(
+                chain[currentIndex],
+                null,
+                null,
+                null,
+                null
+            );
             // compare registered hash and calculated hash
             if (currentBlock.hash !== currentBlock.calculateHash()) {
                 console.log('#Current hashes are not equal');
@@ -177,9 +190,47 @@ class Node {
                 console.log('#This block has not been mined');
                 return [false, null];
             }
+
             // check the block's transactions
+            // first, check the block reward tx
+            const currentBlockReward = currentBlock.transactions[0];
+            if (currentBlockReward.amount !== this.blockRewardAmount) {
+                console.log(`#Block reward amount was not ${this.blockRewardAmount}`);
+                return [false, null];
+            }
+            if (currentBlockReward.inputs) {
+                console.log(`#Block reward inputs should be null`);
+                return [false, null];
+            }
+            if (currentBlockReward.outputs.length !== 1) {
+                console.log(`#Block reward should only have 1 UTXO`);
+                return [false, null];
+            }
+            if (currentBlockReward.sender) {
+                console.log(`#Block reward sender should be null`);
+                return [false, null];
+            }
+            if (currentBlockReward.signature) {
+                console.log(`#Block reward signature should be null`);
+                return [false, null];
+            }
+
+            // second, check the block reward UTXO
+            const currentBlockRewardUTXO = currentBlockReward.outputs[0];
+            if (currentBlockRewardUTXO.amount !== this.blockRewardAmount) {
+                console.log(`#Block reward UTXO amount was not ${this.blockRewardAmount}`);
+                return [false, null];
+            }
+            if (currentBlockRewardUTXO.parentTransactionId !== currentBlockReward.txid) {
+                console.log(`#Block reward UTXO parent tx id was not ${currentBlockReward.txid}`);
+                return [false, null];
+            }
+            // add the block reward UTXO to the temp utxo's list 
+            tempUTXOs[currentBlockRewardUTXO.id] = currentBlockRewardUTXO
+
+            // third, check the rest of the txs in the block
             let tempOutput;
-            for (let i = 0; i < currentBlock.transactions.length; i++) {
+            for (let i = 1; i < currentBlock.transactions.length; i++) {
                 const currentTransaction = new TransactionToVerify(currentBlock.transactions[i]);
                 // verify the tx signature
                 if(!currentTransaction.verifySignature()) {
@@ -258,7 +309,7 @@ class Node {
     mine() {
         // create the new block
         const newBlock = new Block(
-            this.lastBlock().hash,
+            { previousHash: this.lastBlock().hash },
             this.removeChainUtxo,
             this.addChainUtxo,
             this.minimumTransaction,
@@ -268,21 +319,27 @@ class Node {
         // tbd: add a coinbase transaction
         // create block reward tx
         let blockRewardTx = new Transaction(
-            this.coinbase.publicKey,
+            null,
             this.primaryWallet.publicKey,
             this.blockRewardAmount,
             null
         );
-        //manually sign the genesis transaction
-        blockRewardTx.generateSignature(this.coinbase.privateKey);
-        // add the tx to the block
-        newBlock.addTransactionToBlock(blockRewardTx)
-        
+      
+        // add a UTXO to the block reward outputs
+        const blockRewardTxOutput = new TransactionOutput(
+            blockRewardTx.recipient,
+            blockRewardTx.amount,
+            blockRewardTx.txid
+        );
+        blockRewardTx.outputs[0] = blockRewardTxOutput;
 
+        // add the tx to the block
+        newBlock.addBlockReward(blockRewardTx);
+        
         // add up to 9 other transactions from the queue to the block
         while (this.transactionQueue.length !== 0 && newBlock.transactions.length <= 10) {
             let newTransaction = this.transactionQueue.pop();
-            newBlock.addTransactionToBlock(newTransaction)
+            newBlock.addTransaction(newTransaction)
         }
 
         // mine the block
@@ -300,8 +357,8 @@ class Node {
     };
     broadcastChain() {
         console.log('broadcasting chain');
-        const neighborNodes = this.returnNodeAddresses();
-        neighborNodes.map((node) => {
+        const peers = this.returnPeerAddressArray();
+        peers.map((node) => {
             axios({
                 method: 'post',
                 url: `${node}/chain`,

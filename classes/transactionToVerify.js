@@ -5,18 +5,25 @@ const hashSeed = 'billbitt';
 
 
 class TransactionToVerify {
-    constructor ({sender, recipient, amount, inputs, outputs, signature, txid}) {
-        this.sender = sender;
-        this.recipient = recipient;
+    constructor({ amount, inputs, outputs, recipient, sender, signature, txid, timestamp}) {
         this.amount = amount;
         this.inputs = inputs;
         this.outputs = outputs;
+        this.recipient = recipient;
+        this.sender = sender;
         this.signature = signature;
         this.txid = txid
+        this.timestamp = timestamp;
     }
     calculateHash () {
         return crypto.createHmac('sha256', hashSeed)
-            .update(this.sender + this.recipient + this.amount + this.inputs)
+            .update(
+                this.amount +
+                this.inputs +
+                this.sender +
+                this.recipient +
+                this.timestamp
+            )
             .digest('hex');
     }
     verifySignature() {

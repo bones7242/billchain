@@ -4,24 +4,32 @@ const getMerkleRoot = require('../utils/getMerkleRoot.js');
 const getDifficultyString = require('../utils/getDifficultyString.js');
 
 class Block {
-    constructor(previousHash, removeChainUtxo, addChainUtxo, minimumTransaction, getChainUtxos) {
-        console.log('\ncreating a block...');
+    constructor(
+        {
+          previousHash,
+          timestamp,
+          nonce,
+          merkleRoot,
+          hash,
+          transactions,
+        },
+        removeChainUtxo,
+        addChainUtxo,
+        minimumTransaction,
+        getChainUtxos
+    ) {
         // define vars
-        this.hash = null;
-        this.previousHash = null;
-        this.merkleRoot = null;
-        this.nonce = null;
-        this.timestamp = null;
-        this.transactions = [];
+        this.hash = hash || null;
+        this.previousHash = previousHash || null;
+        this.merkleRoot = merkleRoot || '';
+        this.nonce = nonce || 0;
+        this.timestamp = timestamp || Date.now();
+        this.transactions = transactions || [];
         // info/methods passed from the blockchain class
         this.removeChainUtxo = removeChainUtxo;
         this.addChainUtxo = addChainUtxo;
         this.minimumTransaction = minimumTransaction;
         this.getChainUtxos = getChainUtxos;
-        // construct
-        this.previousHash = previousHash;
-        this.timestamp = Date.now();
-        this.nonce = 0;
     }
     calculateHash () {
         //Calculate new hash based on the block's contents
@@ -57,14 +65,14 @@ class Block {
             transactions: this.transactions
         }
     }
-    addTransactionToBlock (transaction) {
-        // process transaction and check if valid,
-        // unless block is genesis block then ignore.
+    addTransaction (transaction) {
         if (!transaction) {
             return false;
         }
-        if((this.previousHash !== "0")) {  // ignore if genesis block
-            const processedSuccessfully = transaction.processTransaction(this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
+        // process transaction and check if valid
+        // ignore if genesis block 
+        if (this.previousHash !== "0") {  
+            const processedSuccessfully = this.processTransaction(transaction);
             if(!processedSuccessfully) {
                 console.log('#Transaction failed to process. Discarded.');
                 return false;
@@ -73,6 +81,57 @@ class Block {
         this.transactions.push(transaction); // add the processed Transaction
         console.log('\nTransaction successfully added to block');
         return true;
+    }
+    addBlockReward (transaction) {
+        this.transactions.push(transaction);
+        console.log('\nBlockReward successfully added to block');
+    }
+    processTransaction(transaction) {
+        /*
+        Returns true if a new transaction could be generated
+        */
+        console.log('verifying transaction:', transaction);
+        const UTXOs = this.getChainUtxos();
+        if (transaction.verifySignature() === false) {
+            console.log('#Transaction Signature failed to verify');
+            return false;
+        }
+        // gather transaction inputs (make sure they are unspent)
+        // attach the UTXO to the input (assuming one can be found in UTXO list)
+        for (let key in transaction.inputs) {
+            if (transaction.inputs.hasOwnProperty(key)) {
+                const UTXOid = UTXOs[transaction.inputs[key].transactionOutputId];
+                if (!UTXOid) {
+                    console.log(`#No UTXO found for this input's transactionOutputId`);
+                    return false;
+                }
+                transaction.inputs[key]['UTXO'] = UTXOid;
+            }
+        }
+        // check if transaction is valid
+        if (transaction.getInputsValue() < this.minimumTransaction) {
+            console.log(`#Transaction Inputs are too small (${transaction.getInputsValue()} < ${this.minimumTransaction})`);
+            return false;
+        }
+        // generate transaction outputs:
+        let leftOver = transaction.getInputsValue() - transaction.amount;
+        // generate output for recipient
+        transaction.outputs[0] = new TransactionOutput(transaction.recipient, transaction.amount, transaction.txid);
+        // generate output for change
+        transaction.outputs[1] = new TransactionOutput(transaction.sender, leftOver, transaction.txid);
+
+        // add outputs to the chain's UTXO list
+        transaction.outputs.forEach(transactionOutput => {
+            this.addChainUtxo(transactionOutput);
+        });
+
+        // remove this input's output from the chain's UTXO list because it is spent
+        transaction.inputs.forEach(input => {
+            const transactionOutputId = input.transactionOutputId;
+            this.removeChainUtxo(transactionOutputId);
+        });
+        return true;
+
     }
 }
 

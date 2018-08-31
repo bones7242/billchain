@@ -1,6 +1,6 @@
 const express = require('express');
 const async = require('async');
-const Node = require('./classes/node.js');
+const BillChainNode = require('./classes/node.js');
 const randomId = require('./utils/randomId.js');
 const jsonBodyParser = require('body-parser').json();
 
@@ -16,13 +16,13 @@ nodeIdentifier = randomId('xNAx', 40);
 require('./utils/checkCryptoSupport.js');
 
 // instantiate this billchain node
-const billNode = new Node();
-billNode.setId(nodeIdentifier);
-billNode.setAddress(`http://localhost:${PORT}`);
+const myBillNode = new BillChainNode();
+myBillNode.setId(nodeIdentifier);
+myBillNode.setAddress(`http://localhost:${PORT}`);
 
 // add routes so the node can be accessed
 app.get('/mine', (req, res) => {
-    const minedBlock = billNode.mine();
+    const minedBlock = myBillNode.mine();
     const response = {
         message: `Successfully mined a block`,
         minedBlock,
@@ -31,7 +31,7 @@ app.get('/mine', (req, res) => {
 });
 app.get('/transaction', (req, res) => {
     return res.status(201).json({
-        transactionQue: billNode.transactionQueue,
+        transactionQue: myBillNode.transactionQueue,
     });
 });
 app.post('/transaction', jsonBodyParser, ({ body }, res) => {
@@ -40,37 +40,35 @@ app.post('/transaction', jsonBodyParser, ({ body }, res) => {
         return res.status(400).send('missing values');
     }
     // create a new transaction
-    const placeInQueue = billNode.newTransaction(body.recipient, body.amount);
+    const placeInQueue = myBillNode.newTransaction(body.recipient, body.amount);
     const response = {message: `Transaction is number ${placeInQueue} in the queue`};
     return res.status(201).json(response);
 });
 
-app.get('/nodes', (req, res) => {
-    return res.status(201).json({
-        nodes: billNode.nodes,
-    });
+app.get('/peer', (req, res) => {
+    return res.status(201).json(myBillNode.peers);
 });
 
-app.post('/nodes', jsonBodyParser, ({ body }, res) => {
-    // accept a list of new nodes in the form of URLs
-    const nodeList = body.nodes;
-    if (!nodeList || (nodeList.length === 0)) {
+app.post('/peer', jsonBodyParser, ({ body }, res) => {
+    // accept a list of new peer nodes in the form of URLs
+    const peerList = body.peers;
+    if (!peerList || (peerList.length === 0)) {
         return res.status(400).json({error: 'Please supply a valid array of nodes'})
     }
-    for (let i = 0; i < nodeList.length; i++) {
-        billNode.registerNode(nodeList[i]);
+    for (let i = 0; i < peerList.length; i++) {
+        myBillNode.registerNode(peerList[i]);
     }
     const response = {
-        message: 'New nodes have been added',
-        totalNodes: nodeList,
+        message: `{$peerList.length} New peer nodes have been added`,
+        totalNodes: myBillNode.peers.length,
     }
     return res.status(201).json(response);
 });
 // chain
 app.get('/chain', (req, res) => {
     const response = {
-        chain: billNode.chain,
-        length: billNode.chain.length,
+        chain: myBillNode.chain,
+        length: myBillNode.chain.length,
     };
     return res.json(response);
 });
@@ -91,18 +89,18 @@ app.post('/chain', jsonBodyParser, ({ body }, res) => {
         return res.status(400).json({ error: 'No node address received' })
     }
 
-    const accepted = billNode.evaluateSidechain(body.chain, body.address);
+    const accepted = myBillNode.evaluateSidechain(body.chain, body.address);
     console.log('completed evaluating new chain');
     let response;
     if (accepted) {
         response = {
             message: 'accepted',
-            chain: billNode.chain,
+            chain: myBillNode.chain,
         }
     } else {
         response = {
             message: 'rejected',
-            chain: billNode.chain,
+            chain: myBillNode.chain,
         }
     }
     return res.status(201).json(response);
@@ -112,8 +110,8 @@ app.get('/wallet/primary', (req, res) => {
     const response = {
         message: `primary wallet on node ${nodeidentifier}`,
         primarywallet: {
-            address: billnode.primarywallet.publickey,
-            balance: billnode.primarywallet.getBalance(),
+            address: myBillNode.primarywallet.publickey,
+            balance: myBillNode.primarywallet.getBalance(),
         },
     };
     return res.status(201).json(response);
@@ -122,28 +120,26 @@ app.get('/wallet/coinbase', (req, res) => {
     const response = {
         message: `coinbase wallet on node ${nodeidentifier}`,
         coinbase: {
-            address: billnode.coinbase.publickey,
-            balance: billnode.coinbase.getBalance(),
+            address: myBillNode.coinbase.publickey,
+            balance: myBillNode.coinbase.getBalance(),
         },
     };
     return res.status(201).json(response);
 });
 app.get('/', (req, res) => {
     const response = {
-        message: `details for node ${nodeIdentifier}`,
         id: nodeIdentifier,
-        address: `http://localhost:${PORT}`,
-        primaryWallet: {
-            address: billNode.primaryWallet.publicKey,
-            balance: billNode.primaryWallet.getBalance(),
+        url: `http://localhost:${PORT}`,
+        walletAddresses: {
+            primary: myBillNode.primaryWallet.publicKey,
+            coinbase: myBillNode.coinbase.publicKey,
+            genesis: myBillNode.genesisWallet.publicKey,
         },
-        coinbase: {
-            address: billNode.coinbase.publicKey,
-        },
-        txQueue: billNode.transactionQueue,
-        difficulty: billNode.difficulty,
-        peers: billNode.returnNodeAddresses(),
-        chain: billNode.chain,
+        txQueue: myBillNode.transactionQueue,
+        difficulty: myBillNode.difficulty,
+        peers: myBillNode.peers,
+        chain: myBillNode.chain,
+        UTXOs: myBillNode.UTXOs,
     }
     return res.status(201).json(response);
 });
