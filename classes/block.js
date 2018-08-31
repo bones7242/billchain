@@ -4,24 +4,32 @@ const getMerkleRoot = require('../utils/getMerkleRoot.js');
 const getDifficultyString = require('../utils/getDifficultyString.js');
 
 class Block {
-    constructor(previousHash, removeChainUtxo, addChainUtxo, minimumTransaction, getChainUtxos) {
-        console.log('\ncreating a block...');
+    constructor(
+        {
+          previousHash,
+          timestamp,
+          nonce,
+          merkleRoot,
+          hash,
+          transactions,
+        },
+        removeChainUtxo,
+        addChainUtxo,
+        minimumTransaction,
+        getChainUtxos
+    ) {
         // define vars
-        this.hash = null;
-        this.previousHash = null;
-        this.merkleRoot = null;
-        this.nonce = null;
-        this.timestamp = null;
-        this.transactions = [];
+        this.hash = hash || null;
+        this.previousHash = previousHash || null;
+        this.merkleRoot = merkleRoot || '';
+        this.nonce = nonce || 0;
+        this.timestamp = timestamp || Date.now();
+        this.transactions = transactions || [];
         // info/methods passed from the blockchain class
         this.removeChainUtxo = removeChainUtxo;
         this.addChainUtxo = addChainUtxo;
         this.minimumTransaction = minimumTransaction;
         this.getChainUtxos = getChainUtxos;
-        // construct
-        this.previousHash = previousHash;
-        this.timestamp = Date.now();
-        this.nonce = 0;
     }
     calculateHash () {
         //Calculate new hash based on the block's contents
@@ -57,13 +65,13 @@ class Block {
             transactions: this.transactions
         }
     }
-    addTransactionToBlock (transaction) {
+    addTransaction (transaction) {
         // process transaction and check if valid,
-        // unless block is genesis block then ignore.
         if (!transaction) {
             return false;
         }
-        if((this.previousHash !== "0")) {  // ignore if genesis block
+        // ignore if genesis block
+        if((this.previousHash !== "0")) {  
             const processedSuccessfully = transaction.processTransaction(this.removeChainUtxo, this.addChainUtxo, this.minimumTransaction, this.getChainUtxos);
             if(!processedSuccessfully) {
                 console.log('#Transaction failed to process. Discarded.');

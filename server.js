@@ -128,7 +128,6 @@ app.get('/wallet/coinbase', (req, res) => {
 });
 app.get('/', (req, res) => {
     const response = {
-        message: `details for node ${nodeIdentifier}`,
         id: nodeIdentifier,
         address: `http://localhost:${PORT}`,
         primaryWallet: {
@@ -140,7 +139,7 @@ app.get('/', (req, res) => {
         },
         txQueue: billNode.transactionQueue,
         difficulty: billNode.difficulty,
-        peers: billNode.returnNodeAddresses(),
+        peers: billNode.peers,
         chain: billNode.chain,
     }
     return res.status(201).json(response);

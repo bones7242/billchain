@@ -2,7 +2,6 @@
 const axios = require('axios');
 const Wallet = require('./wallet.js');
 const Block = require('./block.js');
-const BlockToVerify = require('./blockToVerify.js');
 const TransactionOutput = require('./transactionOutput.js');
 const Transaction = require('./transaction.js');
 const TransactionToVerify = require('./transactionToVerify.js');
@@ -83,9 +82,14 @@ class Node {
 
         // create genesis block
         console.log('\ncreating and mining genesis block...');
-        const genesisBlock = new Block('0', this.removeChainUtxo, this.addChainUtxo, null, null);
+        const genesisBlock = new Block(
+            { previousHash: '0' },
+            this.removeChainUtxo,
+            this.addChainUtxo,
+            this.minimumTransaction,
+            this.getChainUtxos);
         genesisBlock['timestamp'] = new Date('January 13, 1986');
-        genesisBlock.addTransactionToBlock(genesisTransaction);
+        genesisBlock.addTransaction(genesisTransaction);
         genesisBlock.mineBlock(3);
 
         return genesisBlock.getBlockInfo();
@@ -128,7 +132,7 @@ class Node {
          */
         this.peers[address] = address;
     }
-    returnPeerAddresses() {
+    returnPeerAddressArray() {
         let peers = this.peers;
         let addresses = [];
         for (let key in peers) {
@@ -161,7 +165,13 @@ class Node {
 
         // check the chain, and return false if any problems
         while (currentIndex < chain.length) {
-            const currentBlock = new BlockToVerify(chain[currentIndex]);
+            const currentBlock = new Block(
+                chain[currentIndex],
+                null,
+                null,
+                null,
+                null
+            );
             // compare registered hash and calculated hash
             if (currentBlock.hash !== currentBlock.calculateHash()) {
                 console.log('#Current hashes are not equal');
@@ -258,7 +268,7 @@ class Node {
     mine() {
         // create the new block
         const newBlock = new Block(
-            this.lastBlock().hash,
+            { previousHash: this.lastBlock().hash },
             this.removeChainUtxo,
             this.addChainUtxo,
             this.minimumTransaction,
@@ -276,13 +286,13 @@ class Node {
         //manually sign the genesis transaction
         blockRewardTx.generateSignature(this.coinbase.privateKey);
         // add the tx to the block
-        newBlock.addTransactionToBlock(blockRewardTx)
+        newBlock.addTransaction(blockRewardTx)
         
 
         // add up to 9 other transactions from the queue to the block
         while (this.transactionQueue.length !== 0 && newBlock.transactions.length <= 10) {
             let newTransaction = this.transactionQueue.pop();
-            newBlock.addTransactionToBlock(newTransaction)
+            newBlock.addTransaction(newTransaction)
         }
 
         // mine the block
@@ -300,7 +310,7 @@ class Node {
     };
     broadcastChain() {
         console.log('broadcasting chain');
-        const peers = this.returnPeerAddresses();
+        const peers = this.returnPeerAddressArray();
         peers.map((node) => {
             axios({
                 method: 'post',
