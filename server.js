@@ -21,25 +21,6 @@ billNode.setId(nodeIdentifier);
 billNode.setAddress(`http://localhost:${PORT}`);
 
 // add routes so the node can be accessed
-app.get('/details', (req, res) => {
-    const response = {
-        message: `details for node ${nodeIdentifier}`,
-        id: nodeIdentifier,
-        address: `http://localhost:${PORT}`,
-        primaryWallet: {
-            address: billNode.primaryWallet.publicKey,
-            balance: billNode.primaryWallet.getBalance(),
-        },
-        coinbase: {
-            address: billNode.coinbase.publicKey,
-        },
-        txQueue: billNode.transactionQueue,
-        difficulty: billNode.difficulty,
-        peers: billNode.returnNodeAddresses(),
-        chain: billNode.chain,
-    }
-    return res.status(201).json(response);
-});
 app.get('/mine', (req, res) => {
     const minedBlock = billNode.mine();
     const response = {
@@ -47,6 +28,11 @@ app.get('/mine', (req, res) => {
         minedBlock,
     };
     res.status(200).json(response);
+});
+app.get('/transaction', (req, res) => {
+    return res.status(201).json({
+        transactionQue: billNode.transactionQueue,
+    });
 });
 app.post('/transaction', jsonBodyParser, ({ body }, res) => {
     // check that the required fields are in the post'ed data
@@ -59,7 +45,13 @@ app.post('/transaction', jsonBodyParser, ({ body }, res) => {
     return res.status(201).json(response);
 });
 
-app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
+app.get('/nodes', (req, res) => {
+    return res.status(201).json({
+        nodes: billNode.nodes,
+    });
+});
+
+app.post('/nodes', jsonBodyParser, ({ body }, res) => {
     // accept a list of new nodes in the form of URLs
     const nodeList = body.nodes;
     if (!nodeList || (nodeList.length === 0)) {
@@ -134,6 +126,25 @@ app.get('/wallet/coinbase', (req, res) => {
             balance: billnode.coinbase.getBalance(),
         },
     };
+    return res.status(201).json(response);
+});
+app.get('/', (req, res) => {
+    const response = {
+        message: `details for node ${nodeIdentifier}`,
+        id: nodeIdentifier,
+        address: `http://localhost:${PORT}`,
+        primaryWallet: {
+            address: billNode.primaryWallet.publicKey,
+            balance: billNode.primaryWallet.getBalance(),
+        },
+        coinbase: {
+            address: billNode.coinbase.publicKey,
+        },
+        txQueue: billNode.transactionQueue,
+        difficulty: billNode.difficulty,
+        peers: billNode.returnNodeAddresses(),
+        chain: billNode.chain,
+    }
     return res.status(201).json(response);
 });
 // start the server
