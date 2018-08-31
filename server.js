@@ -45,24 +45,22 @@ app.post('/transaction', jsonBodyParser, ({ body }, res) => {
     return res.status(201).json(response);
 });
 
-app.get('/nodes', (req, res) => {
-    return res.status(201).json({
-        nodes: billNode.nodes,
-    });
+app.get('/peer', (req, res) => {
+    return res.status(201).json(billNode.peers);
 });
 
-app.post('/nodes', jsonBodyParser, ({ body }, res) => {
-    // accept a list of new nodes in the form of URLs
-    const nodeList = body.nodes;
-    if (!nodeList || (nodeList.length === 0)) {
+app.post('/peer', jsonBodyParser, ({ body }, res) => {
+    // accept a list of new peer nodes in the form of URLs
+    const peerList = body.peers;
+    if (!peerList || (peerList.length === 0)) {
         return res.status(400).json({error: 'Please supply a valid array of nodes'})
     }
-    for (let i = 0; i < nodeList.length; i++) {
-        billNode.registerNode(nodeList[i]);
+    for (let i = 0; i < peerList.length; i++) {
+        billNode.registerNode(peerList[i]);
     }
     const response = {
-        message: 'New nodes have been added',
-        totalNodes: nodeList,
+        message: `{$peerList.length} New peer nodes have been added`,
+        totalNodes: billNode.peers.length,
     }
     return res.status(201).json(response);
 });

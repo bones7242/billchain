@@ -14,7 +14,7 @@ class Node {
         this.transactionQueue = [];
         this.blockRewardAmount = 13;
         this.difficulty = 3;
-        this.nodes = {
+        this.peers = {
             'http://localhost:4000': 'http://localhost:4000', // note: hard coded nodes
         };
         this.UTXOs = {};
@@ -119,21 +119,21 @@ class Node {
         return this.transactionQueue.length;
     };
     // networking
-    registerNode (address) {
+    registerPeer (address) {
         /*
-        Add a new node to the list of nodes
+        Add a new node to the list of peers
 
         :param address: <str> Address of node. Eg. 'http://192.168.0.5:5000'
         :return: None
          */
-        this.nodes[address] = address;
+        this.peers[address] = address;
     }
-    returnNodeAddresses() {
-        let nodes = this.nodes;
+    returnPeerAddresses() {
+        let peers = this.peers;
         let addresses = [];
-        for (let key in nodes) {
-            if (nodes.hasOwnProperty(key)) {
-                addresses.push(nodes[key]);
+        for (let key in peers) {
+            if (peers.hasOwnProperty(key)) {
+                addresses.push(peers[key]);
             }
         };
         return addresses;
@@ -300,8 +300,8 @@ class Node {
     };
     broadcastChain() {
         console.log('broadcasting chain');
-        const neighborNodes = this.returnNodeAddresses();
-        neighborNodes.map((node) => {
+        const peers = this.returnPeerAddresses();
+        peers.map((node) => {
             axios({
                 method: 'post',
                 url: `${node}/chain`,
