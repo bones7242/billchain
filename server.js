@@ -48,7 +48,7 @@ app.get('/mine', (req, res) => {
     };
     res.status(200).json(response);
 });
-app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
+app.post('/transaction', jsonBodyParser, ({ body }, res) => {
     // check that the required fields are in the post'ed data
     if (!body.recipient || !body.amount) {
         return res.status(400).send('missing values');
@@ -74,28 +74,6 @@ app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
     }
     return res.status(201).json(response);
 });
-app.get('/nodes/resolve', (req, res) => {
-    // implement Consensus Algorithm, which resolves any conflicts,
-    // to ensure a node has the correct chain
-    billNode.resolveConflicts()
-        .then(replaced => {
-            if (replaced) {
-                response = {
-                    message: 'Our chain was replaced',
-                    newChain: billNode.chain,
-                }
-            } else {
-                response = {
-                    message: 'Our chain is authoritative',
-                    chain: billNode.chain,
-                }
-            }
-            return res.status(201).json(response);
-        })
-        .catch(error => {
-            res.status(400).json(error.message);
-        });
-});
 // chain
 app.get('/chain', (req, res) => {
     const response = {
@@ -106,6 +84,8 @@ app.get('/chain', (req, res) => {
 });
 app.post('/chain', jsonBodyParser, ({ body }, res) => {
     console.log(`received new chain from ${body.address}`);
+    // Consensus Algorithm, which resolves any conflicts,
+    // to ensure this node has the correct chain
     if (!body || !body.chain) {
         console.log('no chain received');
         return res.status(400).json({ error: 'No chain received'})
@@ -120,7 +100,7 @@ app.post('/chain', jsonBodyParser, ({ body }, res) => {
     }
 
     const accepted = billNode.consensus(body.chain, body.address);
-    console.log('completed evaluating new block');
+    console.log('completed evaluating new chain');
     let response;
     if (accepted) {
         response = {

@@ -313,7 +313,7 @@ class Node {
                 }
             })
                 .then(response => {
-                    console.log(`response from node ${node}:`, response.message);
+                    console.log(`response from node ${node}:`, response.data.message);
                 })
                 .catch(error => {
                     console.log('${node} error:', error.message);
