@@ -62,7 +62,7 @@ class Transaction {
             if (this.inputs.hasOwnProperty(key)) {
                 const UTXOid = UTXOs[this.inputs[key].transactionOutputId];
                 if (!UTXOid) {
-                    console.log(`#No UTXO found for this input's transactionOtputId`);
+                    console.log(`#No UTXO found for this input's transactionOutputId`);
                     return false;
                 }
                 this.inputs[key]['UTXO'] = UTXOid;

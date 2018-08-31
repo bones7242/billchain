@@ -17,27 +17,10 @@ require('./utils/checkCryptoSupport.js');
 
 // instantiate this billchain node
 const billNode = new Node();
+billNode.setId(nodeIdentifier);
+billNode.setAddress(`http://localhost:${PORT}`);
 
 // add routes so the node can be accessed
-app.get('/details', (req, res) => {
-    const response = {
-        message: `details for node ${nodeIdentifier}`,
-        id: nodeIdentifier,
-        address: `http://localhost:${PORT}`,
-        primaryWallet: {
-            address: billNode.primaryWallet.publicKey,
-            balance: billNode.primaryWallet.getBalance(),
-        },
-        coinbase: {
-            address: billNode.coinbase.publicKey,
-        },
-        txQueue: billNode.transactionQueue,
-        difficulty: billNode.difficulty,
-        peers: billNode.returnNodeAddresses(),
-        chain: billNode.chain,
-    }
-    return res.status(201).json(response);
-});
 app.get('/mine', (req, res) => {
     const minedBlock = billNode.mine();
     const response = {
@@ -46,7 +29,12 @@ app.get('/mine', (req, res) => {
     };
     res.status(200).json(response);
 });
-app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
+app.get('/transaction', (req, res) => {
+    return res.status(201).json({
+        transactionQue: billNode.transactionQueue,
+    });
+});
+app.post('/transaction', jsonBodyParser, ({ body }, res) => {
     // check that the required fields are in the post'ed data
     if (!body.recipient || !body.amount) {
         return res.status(400).send('missing values');
@@ -57,14 +45,13 @@ app.post('/transactions/new', jsonBodyParser, ({ body }, res) => {
     return res.status(201).json(response);
 });
 
-app.get('/chain', (req, res) => {
-    const response = {
-        chain: billNode.chain,
-        length: billNode.chain.length,
-    };
-    return res.json(response);
+app.get('/nodes', (req, res) => {
+    return res.status(201).json({
+        nodes: billNode.nodes,
+    });
 });
-app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
+
+app.post('/nodes', jsonBodyParser, ({ body }, res) => {
     // accept a list of new nodes in the form of URLs
     const nodeList = body.nodes;
     if (!nodeList || (nodeList.length === 0)) {
@@ -79,79 +66,48 @@ app.post('/nodes/register', jsonBodyParser, ({ body }, res) => {
     }
     return res.status(201).json(response);
 });
-app.get('/nodes/resolve', (req, res) => {
-    // implement Consensus Algorithm, which resolves any conflicts,
-    // to ensure a node has the correct chain
-    billNode.resolveConflicts()
-        .then(replaced => {
-            if (replaced) {
-                response = {
-                    message: 'Our chain was replaced',
-                    newChain: billNode.chain,
-                }
-            } else {
-                response = {
-                    message: 'Our chain is authoritative',
-                    chain: billNode.chain,
-                }
-            }
-            return res.status(201).json(response);
-        })
-        .catch(error => {
-            res.status(400).json(error.message);
-        });
+// chain
+app.get('/chain', (req, res) => {
+    const response = {
+        chain: billNode.chain,
+        length: billNode.chain.length,
+    };
+    return res.json(response);
 });
-app.post('/block/new', jsonBodyParser, ({ body, ip }, res) => {
-    console.log('received new block on /block/new/')
-    if (!body || !body.block) {
-        console.log('no block received');
-        return res.status(400).json({error: 'No block received'})
+app.post('/chain', jsonBodyParser, ({ body }, res) => {
+    console.log(`received new chain from ${body.address}`);
+    // Consensus Algorithm, which resolves any conflicts,
+    // to ensure this node has the correct chain
+    if (!body || !body.chain) {
+        console.log('no chain received');
+        return res.status(400).json({ error: 'No chain received'})
     }
-    return res.status(200).json({message: 'block received'})
-    //billNode.evaluateNewBlock(body.block, ip)
-    //    .then(accepted => {
-    //        console.log('completed evaluating new block');
-    //        let response;
-    //        if (accepted) {
-    //            response = {
-    //                message: 'Your block was accepted',
-    //                chain: billNode.chain,
-    //            }
-    //        } else {
-    //            response = {
-    //                message: 'Your block was rejected',
-    //                chain: null,
-    //            }
-    //        }
-    //        return res.status(201).json(response);
-    //    })
-    //    .catch(error => {
-    //        res.status(400).json(error.message);
-    //    });
-});
-app.get('/block/:hash', ({ params }, res) => {
-    console.log(`request on /block/${params.hash}`);
-    try {
-        let response;
-        const [block, index] = billNode.getBlock(params.hash);
-        if (block) {
-            response = {
-                message: 'Block found',
-                block,
-                index,
-            };
-        } else {
-            response = {
-                message: 'No block found with that hash',
-                block: false,
-                index: false,
-            }
+    if (!body.id) {
+        console.log('no node id received');
+        return res.status(400).json({ error: 'No node id received' })
+    }
+    if (!body.address) {
+        console.log('no node address received');
+        return res.status(400).json({ error: 'No node address received' })
+    }
+
+    const accepted = billNode.evaluateSidechain(body.chain, body.address);
+    console.log('completed evaluating new chain');
+    let response;
+    if (accepted) {
+        response = {
+            message: 'accepted',
+            chain: billNode.chain,
         }
-        res.status(400).json(response);
-    } catch (error) {
-        res.status(400).json(error.message);
+    } else {
+        response = {
+            message: 'rejected',
+            chain: billNode.chain,
+        }
     }
+    return res.status(201).json(response);
 });
+// wallet
 app.get('/wallet/primary', (req, res) => {
     const response = {
         message: `primary wallet on node ${nodeidentifier}`,
@@ -170,6 +126,25 @@ app.get('/wallet/coinbase', (req, res) => {
             balance: billnode.coinbase.getBalance(),
         },
     };
+    return res.status(201).json(response);
+});
+app.get('/', (req, res) => {
+    const response = {
+        message: `details for node ${nodeIdentifier}`,
+        id: nodeIdentifier,
+        address: `http://localhost:${PORT}`,
+        primaryWallet: {
+            address: billNode.primaryWallet.publicKey,
+            balance: billNode.primaryWallet.getBalance(),
+        },
+        coinbase: {
+            address: billNode.coinbase.publicKey,
+        },
+        txQueue: billNode.transactionQueue,
+        difficulty: billNode.difficulty,
+        peers: billNode.returnNodeAddresses(),
+        chain: billNode.chain,
+    }
     return res.status(201).json(response);
 });
 // start the server
