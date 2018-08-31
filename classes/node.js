@@ -76,7 +76,7 @@ class Node {
         // store the UTXO in the UTXOs list
         this.UTXOs[genesisTransactionOutput.id]= genesisTransactionOutput;
 
-        // store the genesis transaction
+        // store the genesis transaction UTXO
         this.genesisTransactionOutput = genesisTransactionOutput;
 
         // create genesis block
@@ -282,10 +282,19 @@ class Node {
             this.blockRewardAmount,
             null
         );
-        //manually sign the genesis transaction
+        //manually sign the block reward
         blockRewardTx.generateSignature(this.coinbase.privateKey);
+      
+        // add a UTXO to the block reward outputs
+        const blockRewardTxOutput = new TransactionOutput(
+            blockRewardTx.recipient,
+            blockRewardTx.amount,
+            blockRewardTx.txid
+        );
+        blockRewardTx.outputs[0] = blockRewardTxOutput;
+
         // add the tx to the block
-        newBlock.addTransaction(blockRewardTx)
+        newBlock.addBlockReward(blockRewardTx);
         
         // add up to 9 other transactions from the queue to the block
         while (this.transactionQueue.length !== 0 && newBlock.transactions.length <= 10) {

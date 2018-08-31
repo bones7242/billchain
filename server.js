@@ -1,6 +1,6 @@
 const express = require('express');
 const async = require('async');
-const BillNode = require('./classes/billNode.js');
+const BillChainNode = require('./classes/node.js');
 const randomId = require('./utils/randomId.js');
 const jsonBodyParser = require('body-parser').json();
 
@@ -16,7 +16,7 @@ nodeIdentifier = randomId('xNAx', 40);
 require('./utils/checkCryptoSupport.js');
 
 // instantiate this billchain node
-const myBillNode = new BillNode();
+const myBillNode = new BillChainNode();
 myBillNode.setId(nodeIdentifier);
 myBillNode.setAddress(`http://localhost:${PORT}`);
 
