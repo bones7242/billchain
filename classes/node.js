@@ -6,32 +6,40 @@ const BlockToVerify = require('./blockToVerify.js');
 const TransactionOutput = require('./transactionOutput.js');
 const Transaction = require('./transaction.js');
 const TransactionToVerify = require('./transactionToVerify.js');
-const searchChainForPreviousHash = require('../functions/searchChainForPreviousHash');
-const createChainWithSideChain = require('../functions/createChainWithSideChain');
 const getDifficultyString = require('../utils/getDifficultyString.js');
 
 class Node {
     constructor() {
         this.chain = [];
         this.transactionQueue = [];
+        this.blockRewardAmount = 13;
         this.difficulty = 3;
         this.nodes = {
             'http://localhost:4000': 'http://localhost:4000', // note: hard coded nodes
         };
         this.UTXOs = {};
         this.minimumTransaction = 1;
+        this.address;
+        this.id;
         // bind functions
         this.getChainUtxos = this.getChainUtxos.bind(this);
         this.removeChainUtxo = this.removeChainUtxo.bind(this);
         this.addChainUtxo = this.addChainUtxo.bind(this);
         this.mine = this.mine.bind(this);
         // create coinbase wallet
-        this.coinbase = new Wallet(this.getChainUtxos);
+        this.coinbase = new Wallet(null, '4a65851d7639eb284da1fa83e24a2398288d6ab6d1c9d8d7d6b611fc76aa305f');
+
         // create another wallets
         this.primaryWallet = new Wallet(this.getChainUtxos);
         // generate first 'genesis' block & add it to the chain
         const genesisBlock = this.createGenesisBlock();
         this.addBlock(genesisBlock);
+    }
+    setAddress (address) {
+        this.address = address;
+    }
+    setId(id) {
+        this.id = id;
     }
     getChainUtxos () {
         return this.UTXOs;
@@ -46,19 +54,18 @@ class Node {
     createGenesisBlock () {
         console.log('\ncreating genesis transaction...');
         // create genesis wallets
-        const genesisCoinbase = new Wallet(null, '4a65851d7639eb284da1fa83e24a2398288d6ab6d1c9d8d7d6b611fc76aa305f');
         const genesisWallet = new Wallet(null, '2a185918d040455f3fe7e25b322328011e9a31c874f674d53931a4449e7b7239');
 
         // create genesis transaction
         let genesisTransaction = new Transaction(
-            genesisCoinbase.publicKey,
+            this.coinbase.publicKey,
             genesisWallet.publicKey,
             10,
             null
         );
 
         //manually sign the genesis transaction
-        genesisTransaction.generateSignature(genesisCoinbase.privateKey);
+        genesisTransaction.generateSignature(this.coinbase.privateKey);
 
         // add a UTXO to the genesis transaction
         const genesisTransactionOutput = new TransactionOutput(
@@ -149,7 +156,7 @@ class Node {
         // verify that the genesis bocks are the same
         if (previousBlock.hash !== this.chain[0].hash) {
             console.log(`#Genesis blocks are not the same`);
-            return false;
+            return [false, null];
         }
 
         // check the chain, and return false if any problems
@@ -158,17 +165,17 @@ class Node {
             // compare registered hash and calculated hash
             if (currentBlock.hash !== currentBlock.calculateHash()) {
                 console.log('#Current hashes are not equal');
-                return false;
+                return [false, null];
             }
             // compare previous hash and registered previous hash
             if (previousBlock.hash !== currentBlock.previousHash) {
                 console.log('#previous Hashes not equal');
-                return false;
+                return [false, null];
             }
             // check if hash is solved
             if (currentBlock.hash.substring(0, this.difficulty) !== target) {
                 console.log('#This block has not been mined');
-                return false;
+                return [false, null];
             }
             // check the block's transactions
             let tempOutput;
@@ -177,12 +184,12 @@ class Node {
                 // verify the tx signature
                 if(!currentTransaction.verifySignature()) {
                     console.log(`#Signature on transaction[${i}] is invalid`);
-                    return false;
+                    return [false, null];
                 }
                 // verify the inputs equal the outputs
                 if(currentTransaction.getInputsValue() !== currentTransaction.getOutputsValue()) {
                     console.log(`#Inputs are not equal to outputs on transaction[${i}]`);
-                    return false;
+                    return [false, null];
                 }
                 // check all the inputs
                 for (let key in currentTransaction.inputs) {
@@ -192,12 +199,12 @@ class Node {
                         //
                         if (!tempOutput) {
                             console.log(`#Referenced input on transaction[${i}] is missing`);
-                            return false;
+                            return [false, null];
                         }
                         //
                         if (thisInput.UTXO.amount !== tempOutput.amount) {
                             console.log(`#Referenced input on transaction[${i}] has invalid amount`);
-                            return false;
+                            return [false, null];
                         }
                         delete tempUTXOs[thisInput.transactionOutputId];
                     }
@@ -210,11 +217,11 @@ class Node {
                 //
                 if (currentTransaction.outputs[0].recipient !== currentTransaction.recipient) {
                     console.log(`#Transaction[${i}] output recipient isnot who it should be`);
-                    return false;
+                    return [false, null];
                 }
                 if (currentTransaction.outputs[1].recipient !== currentTransaction.sender) {
                     console.log(`#Transaction[${i}] output 'change' address is not sender`);
-                    return false;
+                    return [false, null];
                 }
             }
             // check the next block
@@ -222,81 +229,25 @@ class Node {
             currentIndex += 1;
         }
         // return true if no problems found in the chain
-        return true;
+        return [true, tempUTXOs];
     }
-    validSideChain () {
-        return true;
-    }
-    async requestBlockFromPeer (hash, ip) {
-        console.log('previous block requested from peer');
-        /*
-        return: a block object, or false
-        */
-        const url = `${ip}/block/${hash}`;
-        await axios.get(url)
-            .then(response => {
-                console.log('previous block from peer:')
-                return response.block;
-            })
-            .catch(error => {
-                console.log(error.message);
-            });
-    }
-    findCommonRoot (block, peerAddress) {
-        console.log('finding common root...');
-        let currentBlock, index, sideChain;
-        index = -1;
-        currentBlock = block;
-        sideChain = [];
-        // check for a common root
-        // for each block given, check all the way back untill you hit the origin
-        // do this until there are no more new blocks or an index above zero is found
-        while (currentBlock.previousHash && index <= 0) {
-            // check the chain for the preceding block
-            index = searchChainForPreviousHash(this.chain, currentBlock);
-            console.log(`index of previous hash ${currentBlock.previousHash} in our chain:`, index);
-            // store this block in sidechain array
-            sideChain.unshift(currentBlock);
-            console.log('sidechain:', sideChain);
-            // and get a new block
-            currentBlock = this.requestBlockFromPeer(currentBlock.previousHash, peerAddress);
-            console.log('new block from peer:', currentBlock.hash);
-        }
-        // check to see if we went through the whole competing chain without finding the same genesis block
-        if (!currentBlock && index < 0) {
-            console.log('warning: this chain does not have same genesis block');
-            return [-1, null];
-        }
-        console.log('found a common root:', this.chain[index].hash);
-        return [ index, sideChain ];
-    }
-    evaluateNewBlock (newBlock, peerAddress) {
-        // console.log('evaluating new block', newBlock);
-        console.log('from peer:', peerAddress);
-        // find common root
-        const [index, sideChain] = this.findCommonRoot(newBlock);
-        if (index < 0) {
-            console.log('#rejecting malicious chain');
-            return false;
-        }
-        // reject if provided block is part of a shorter chain
-        console.log('evaluating amount of work...');
-        const sideChainLength = sideChain.length;
-        const depthOfCommonRoot = this.chain.length - 1 - index;
-        console.log('sideChainLength', sideChainLength);
-        console.log('depthOfCommonRoot', depthOfCommonRoot);
-        if (sideChainLength <= depthOfCommonRoot) {
-            console.log(`#rejecting block because sidechain is not longer than our chain`);
+    consensus(sideChain) {
+        // reject if provided chain is shorter
+        console.log('evaluating amount of work in sidechain...');
+        if (sideChain.length <= this.chain.length) {
+            console.log(`#rejecting chain because it is not longer than our chain`);
             return false;
         }
         // evaluate the sidechain's validity
-        console.log('evaluating side chain...');
-        if (!this.validSideChain(sideChain)) {
+        console.log('evaluating longer chain...');
+        const [isValidChain, sideChainUTXOs] = this.validChain(sideChain);
+        if (!isValidChain) {
             console.log(`#rejecting block because sidechain is invalid`);
             return false;
         }
         console.log('using side chain...');
-        this.chain = createChainWithSideChain(sideChain, index);
+        this.chain = sideChain;
+        this.UTXOs = sideChainUTXOs;
         console.log('side chain used.');
         // restart the current mining operations,
             // because they didn't have this most recent block
@@ -315,7 +266,17 @@ class Node {
         );
 
         // tbd: add a coinbase transaction
-
+        // create block reward tx
+        let blockRewardTx = new Transaction(
+            this.coinbase.publicKey,
+            this.primaryWallet.publicKey,
+            this.blockRewardAmount,
+            null
+        );
+        //manually sign the genesis transaction
+        blockRewardTx.generateSignature(this.coinbase.privateKey);
+        // add the tx to the block
+        newBlock.addTransactionToBlock(blockRewardTx)
         
 
         // add up to 9 other transactions from the queue to the block
@@ -332,28 +293,30 @@ class Node {
         this.addBlock(minedBlock);
 
         // broadcast the mined block
-        this.broadcastBlock(minedBlock);
+        this.broadcastChain();
 
         // return the mined block
         return minedBlock;
     };
-    broadcastBlock(block) {
-        console.log('broadcasting block:', block);
+    broadcastChain() {
+        console.log('broadcasting chain');
         const neighborNodes = this.returnNodeAddresses();
         neighborNodes.map((node) => {
             axios({
                 method: 'post',
-                url: `${node}/block/new`,
+                url: `${node}/chain`,
                 headers: { 'Content-Type': 'application/json' },
                 data: {
-                    block,
+                    chain: this.chain,
+                    id: this.id,
+                    address: this.address,
                 }
             })
                 .then(response => {
-                    console.log(`successfully sent to ${node}.`);
+                    console.log(`response from node ${node}:`, response.message);
                 })
                 .catch(error => {
-                    console.log('error:', error.message);
+                    console.log('${node} error:', error.message);
                 });
         });
     }
