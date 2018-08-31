@@ -6,19 +6,27 @@ const hashSeed = 'billbitt';
 const TransactionOutput = require('./transactionOutput.js');
 
 class Transaction {
-    constructor (sender, recipient, amount, inputs) {
+    constructor (sender, recipient, amount, inputs, timestamp) {
         // console.log('\ncreating a transaction...');
-        this.sender = sender;
-        this.recipient = recipient;
         this.amount = amount;
         this.inputs = inputs;
         this.outputs = [];
+        this.recipient = recipient;
+        this.sender = sender;
         this.signature = null;
+        this.timestamp = timestamp || Date.now();
         this.txid = this.calculateHash();
+        
     }
     calculateHash () {
         return crypto.createHmac('sha256', hashSeed)
-            .update(this.sender + this.recipient + this.amount + this.inputs)
+            .update(
+                this.amount +
+                this.inputs +
+                this.sender +
+                this.recipient +
+                this.timestamp
+            )
             .digest('hex');
     }
     generateSignature (privateKey) {

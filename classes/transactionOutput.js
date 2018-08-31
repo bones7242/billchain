@@ -2,19 +2,22 @@ const crypto = require('crypto');
 const hashSeed = 'billbitt';
 
 class TransactionOutput {
-    constructor(recipient, amount, parentTransactionId) {
+    constructor(recipient, amount, parentTransactionId, timestamp) {
         console.log('\ncreating a transaction output...');
         // define vars
-        this.recipient = null;
-        this.amount = null;
-        this.parentTransactionId = null;
+        this.amount = amount || null;
         this.id = null;
-        // construct
-        this.recipient = recipient;
-        this.amount = amount;
-        this.parentTransactionId = parentTransactionId;
+        this.parentTransactionId = parentTransactionId || null;
+        this.recipient = recipient || null;
+        this.timestamp = timestamp || Date.now();
+        // set id
         this.id = crypto.createHmac('sha256', hashSeed)
-            .update(this.recipient + this.amount + this.parentTransactionId)
+            .update(
+                this.amount +
+                this.parentTransactionId +
+                this.recipient +
+                this.timestamp
+            )
             .digest('hex');
     }
     isMine (publicKey) {

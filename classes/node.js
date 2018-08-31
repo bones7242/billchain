@@ -25,15 +25,13 @@ class Node {
         this.removeChainUtxo = this.removeChainUtxo.bind(this);
         this.addChainUtxo = this.addChainUtxo.bind(this);
         this.mine = this.mine.bind(this);
-        // create coinbase wallet
+        // create node wallets
         this.genesisWallet = new Wallet(null, '2a185918d040455f3fe7e25b322328011e9a31c874f674d53931a4449e7b7239');
         this.coinbase = new Wallet(null, '4a65851d7639eb284da1fa83e24a2398288d6ab6d1c9d8d7d6b611fc76aa305f');
-
-        // create another wallets
         this.primaryWallet = new Wallet(this.getChainUtxos);
         // generate first 'genesis' block & add it to the chain
-        const genesisBlock = this.createGenesisBlock();
-        this.addBlock(genesisBlock);
+        this.genesisBlock = this.createGenesisBlock();
+        this.addBlock(this.genesisBlock);
     }
     setAddress (address) {
         this.address = address;
@@ -51,15 +49,17 @@ class Node {
         this.UTXOs[transactionOutput.id] = transactionOutput;
     }
     // blocks
-    createGenesisBlock () {
-        console.log('\ncreating genesis transaction...'); 
+    createGenesisBlock() {
 
+        console.log('\ncreating genesis transaction...'); 
+        const genesisTimeStamp = new Date('January 13, 1986');
         // create genesis transaction
         let genesisTransaction = new Transaction(
             this.coinbase.publicKey,
             this.genesisWallet.publicKey,
             10,
-            null
+            null,
+            genesisTimeStamp,
         );
 
         //manually sign the genesis transaction
@@ -69,7 +69,8 @@ class Node {
         const genesisTransactionOutput = new TransactionOutput(
             genesisTransaction.recipient,
             genesisTransaction.amount,
-            genesisTransaction.txid
+            genesisTransaction.txid,
+            genesisTimeStamp,
         );
         genesisTransaction.outputs[0]= genesisTransactionOutput;
 
@@ -82,12 +83,14 @@ class Node {
         // create genesis block
         console.log('\ncreating and mining genesis block...');
         const genesisBlock = new Block(
-            { previousHash: '0' },
+            { 
+                previousHash: '0',
+                timestamp: genesisTimeStamp,
+            },
             this.removeChainUtxo,
             this.addChainUtxo,
             this.minimumTransaction,
             this.getChainUtxos);
-        genesisBlock['timestamp'] = new Date('January 13, 1986');
         genesisBlock.addTransaction(genesisTransaction);
         genesisBlock.mineBlock(3);
 
@@ -154,10 +157,11 @@ class Node {
         let currentIndex = 1;
         let tempUTXOs = {};
 
-        tempUTXOs[this.genesisTransactionOutput.id] = this.genesisTransactionOutput;  // hard code this with the genesis block txo
+        // start with hard coded genesis block utxo
+        tempUTXOs[this.genesisBlock.transactions[0].outputs[0].id] = this.genesisBlock.transactions[0].outputs[0];
 
         // verify that the genesis bocks are the same
-        if (previousBlock.hash !== this.chain[0].hash) {
+        if (previousBlock.hash !== this.genesisBlock.hash) {
             console.log(`#Genesis blocks are not the same`);
             return [false, null];
         }
@@ -186,9 +190,47 @@ class Node {
                 console.log('#This block has not been mined');
                 return [false, null];
             }
+
             // check the block's transactions
+            // first, check the block reward tx
+            const currentBlockReward = currentBlock.transactions[0];
+            if (currentBlockReward.amount !== this.blockRewardAmount) {
+                console.log(`#Block reward amount was not ${this.blockRewardAmount}`);
+                return [false, null];
+            }
+            if (currentBlockReward.inputs) {
+                console.log(`#Block reward inputs should be null`);
+                return [false, null];
+            }
+            if (currentBlockReward.outputs.length !== 1) {
+                console.log(`#Block reward should only have 1 UTXO`);
+                return [false, null];
+            }
+            if (currentBlockReward.sender) {
+                console.log(`#Block reward sender should be null`);
+                return [false, null];
+            }
+            if (currentBlockReward.signature) {
+                console.log(`#Block reward signature should be null`);
+                return [false, null];
+            }
+
+            // second, check the block reward UTXO
+            const currentBlockRewardUTXO = currentBlockReward.outputs[0];
+            if (currentBlockRewardUTXO.amount !== this.blockRewardAmount) {
+                console.log(`#Block reward UTXO amount was not ${this.blockRewardAmount}`);
+                return [false, null];
+            }
+            if (currentBlockRewardUTXO.parentTransactionId !== currentBlockReward.txid) {
+                console.log(`#Block reward UTXO parent tx id was not ${currentBlockReward.txid}`);
+                return [false, null];
+            }
+            // add the block reward UTXO to the temp utxo's list 
+            tempUTXOs[currentBlockRewardUTXO.id] = currentBlockRewardUTXO
+
+            // third, check the rest of the txs in the block
             let tempOutput;
-            for (let i = 0; i < currentBlock.transactions.length; i++) {
+            for (let i = 1; i < currentBlock.transactions.length; i++) {
                 const currentTransaction = new TransactionToVerify(currentBlock.transactions[i]);
                 // verify the tx signature
                 if(!currentTransaction.verifySignature()) {
@@ -277,13 +319,11 @@ class Node {
         // tbd: add a coinbase transaction
         // create block reward tx
         let blockRewardTx = new Transaction(
-            this.coinbase.publicKey,
+            null,
             this.primaryWallet.publicKey,
             this.blockRewardAmount,
             null
         );
-        //manually sign the block reward
-        blockRewardTx.generateSignature(this.coinbase.privateKey);
       
         // add a UTXO to the block reward outputs
         const blockRewardTxOutput = new TransactionOutput(
