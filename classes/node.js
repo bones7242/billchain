@@ -231,7 +231,7 @@ class Node {
         // return true if no problems found in the chain
         return [true, tempUTXOs];
     }
-    consensus(sideChain) {
+    evaluateSidechain(sideChain) {
         // reject if provided chain is shorter
         console.log('evaluating amount of work in sidechain...');
         if (sideChain.length <= this.chain.length) {
@@ -314,6 +314,9 @@ class Node {
             })
                 .then(response => {
                     console.log(`response from node ${node}:`, response.data.message);
+                    if (response.data.message === 'rejected') {
+                        this.evaluateSidechain(response.data.chain);
+                    }
                 })
                 .catch(error => {
                     console.log('${node} error:', error.message);

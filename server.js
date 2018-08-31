@@ -91,18 +91,18 @@ app.post('/chain', jsonBodyParser, ({ body }, res) => {
         return res.status(400).json({ error: 'No node address received' })
     }
 
-    const accepted = billNode.consensus(body.chain, body.address);
+    const accepted = billNode.evaluateSidechain(body.chain, body.address);
     console.log('completed evaluating new chain');
     let response;
     if (accepted) {
         response = {
-            message: 'Your chain was accepted',
+            message: 'accepted',
             chain: billNode.chain,
         }
     } else {
         response = {
-            message: 'Your chain was rejected',
-            chain: null,
+            message: 'rejected',
+            chain: billNode.chain,
         }
     }
     return res.status(201).json(response);
