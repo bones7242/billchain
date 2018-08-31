@@ -16,9 +16,9 @@ class BlockToVerify {
         return crypto.createHmac('sha256', hashSeed)
             .update(
                 this.previousHash +
-                this.timestamp +
+                this.merkleRoot +
                 this.nonce +
-                this.merkleRoot
+                this.timestamp
             )
             .digest('hex');
     }
