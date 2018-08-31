@@ -137,10 +137,14 @@ app.get('/', (req, res) => {
         coinbase: {
             address: billNode.coinbase.publicKey,
         },
+        genesisWallet: {
+            address: billNode.genesisWallet.publicKey,
+        },
         txQueue: billNode.transactionQueue,
         difficulty: billNode.difficulty,
         peers: billNode.peers,
         chain: billNode.chain,
+        UTXOs: billNode.UTXOs,
     }
     return res.status(201).json(response);
 });

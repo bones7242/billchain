@@ -26,6 +26,7 @@ class Node {
         this.addChainUtxo = this.addChainUtxo.bind(this);
         this.mine = this.mine.bind(this);
         // create coinbase wallet
+        this.genesisWallet = new Wallet(null, '2a185918d040455f3fe7e25b322328011e9a31c874f674d53931a4449e7b7239');
         this.coinbase = new Wallet(null, '4a65851d7639eb284da1fa83e24a2398288d6ab6d1c9d8d7d6b611fc76aa305f');
 
         // create another wallets
@@ -51,14 +52,12 @@ class Node {
     }
     // blocks
     createGenesisBlock () {
-        console.log('\ncreating genesis transaction...');
-        // create genesis wallets
-        const genesisWallet = new Wallet(null, '2a185918d040455f3fe7e25b322328011e9a31c874f674d53931a4449e7b7239');
+        console.log('\ncreating genesis transaction...'); 
 
         // create genesis transaction
         let genesisTransaction = new Transaction(
             this.coinbase.publicKey,
-            genesisWallet.publicKey,
+            this.genesisWallet.publicKey,
             10,
             null
         );
@@ -288,7 +287,6 @@ class Node {
         // add the tx to the block
         newBlock.addTransaction(blockRewardTx)
         
-
         // add up to 9 other transactions from the queue to the block
         while (this.transactionQueue.length !== 0 && newBlock.transactions.length <= 10) {
             let newTransaction = this.transactionQueue.pop();
